@@ -12,6 +12,7 @@ __pycache__/
 # ===== ENVIRONMENTS =====
 venv/
 venv_mcu/
+src/venv_mcu/
 .env
 .env.*
 
