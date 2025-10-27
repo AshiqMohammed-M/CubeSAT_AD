@@ -1,0 +1,25 @@
+# ===== PYTHON CACHE FILES =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.manifest
+*.spec
+
+# ===== ENVIRONMENTS =====
+venv/
+venv_mcu/
+.env
+.env.*
+
+# ===== LOGS & TEMP FILES =====
+*.log
+logs/
+**/logs/
+*.tmp
+*.bak
+*.swp
+*.lock
