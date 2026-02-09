@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-SIMULATION DE DONNEES ENTRANTES OBC
-Teste le système OBC avec des messages MCU simulés
+OBC INPUT DATA SIMULATION
+Tests the OBC system with simulated MCU messages
 """
-
+#completed
 import os
 import sys
 import json
@@ -11,18 +11,18 @@ import numpy as np
 import logging
 from datetime import datetime, timedelta
 
-# Configuration des chemins
+# Configuring paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
 obc_dir = os.path.dirname(current_dir)
 src_dir = os.path.dirname(obc_dir)
 project_root = os.path.dirname(src_dir)
 
-# ========== CHEMINS CORRIGÉS ==========
-# Tous les logs dans obc/
+# ========== CORRECTED PATHS ==========
+# All logs in obc/
 OBC_LOGS_DIR = os.path.join(project_root, "data", "obc", "logs")
 os.makedirs(OBC_LOGS_DIR, exist_ok=True)
 
-# Configuration du logging
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -41,13 +41,13 @@ from interface.obc_message_handler import OBCMessageHandler
 from interface.obc_response_generator import OBCResponseGenerator
 
 def create_sample_mcu_message(message_type="SUMMARY", include_window=True):
-    """Crée un message MCU simulé"""
+    """Creates a simulated MCU message"""
     
-    # Données capteurs simulées - CORRIGÉ: 30 points exactement
+    # Simulated sensor data - CORRECTED: exactly 30 points
     sensor_data = []
     base_time = datetime.now() - timedelta(seconds=30)
     
-    for i in range(30):  # Exactement 30 points
+    for i in range(30):  # Exactly 30 points
         timestamp = base_time + timedelta(seconds=i)
         sensor_data.append({
             "timestamp": timestamp.isoformat() + "Z",
@@ -71,7 +71,7 @@ def create_sample_mcu_message(message_type="SUMMARY", include_window=True):
         },
         "payload": {
             "rule_triggered": "R4" if message_type == "SUMMARY" else "R1",
-            "sensor_data": sensor_data[-10:],  # Derniers 10 points
+            "sensor_data": sensor_data[-10:],  # Latest 10 points
             "actions_taken": ["REDUCE_LOAD", "LED_YELLOW"],
             "emergency_level": "HIGH" if message_type == "ALERT_CRITICAL" else "MEDIUM"
         }
@@ -81,21 +81,21 @@ def create_sample_mcu_message(message_type="SUMMARY", include_window=True):
         message["payload"]["temporal_window"] = {
             "window_size_seconds": 30,
             "data_points_count": 30,
-            "sensor_data": sensor_data  # TOUS les 30 points
+            "sensor_data": sensor_data  # All the 30 points
         }
     
     return message
 
 def simulate_critical_anomaly():
-    """Crée un message avec anomalie critique simulée"""
+    """Creates a message with simulated critical anomaly"""
     sensor_data = []
     base_time = datetime.now() - timedelta(seconds=30)
     
-    # Création d'une séquence avec surchauffe progressive
-    for i in range(30):  # Exactement 30 points
+    # Creating a sequence with progressive overheating
+    for i in range(30):  # Exactly 30 points
         timestamp = base_time + timedelta(seconds=i)
-        # Simulation de surchauffe progressive
-        temp = 40.0 + (i * 1.0)  # De 40°C à 70°C
+        # Simulation of progressive overheating
+        temp = 40.0 + (i * 1.0)  # From 40°C to 70°C
         
         sensor_data.append({
             "timestamp": timestamp.isoformat() + "Z",
@@ -125,7 +125,7 @@ def simulate_critical_anomaly():
             "temporal_window": {
                 "window_size_seconds": 30,
                 "data_points_count": 30,
-                "sensor_data": sensor_data  # TOUS les 30 points
+                "sensor_data": sensor_data  # All the 30 points
             }
         }
     }
@@ -133,7 +133,7 @@ def simulate_critical_anomaly():
     return message
 
 def save_test_results(test_name, message, response):
-    """Sauvegarde les résultats des tests dans data/obc/logs/"""
+    """Saves test results in data/obc/logs/"""
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"obc_test_{test_name}_{timestamp}.json"
@@ -159,15 +159,15 @@ def save_test_results(test_name, message, response):
         with open(filepath, 'w') as f:
             json.dump(test_result, f, indent=2)
             
-        logger.info(f"Resultat test sauvegarde: {filename}")
+        logger.info(f"Backup test result: {filename}")
         
     except Exception as e:
-        logger.error(f"Erreur sauvegarde resultats: {e}")
+        logger.error(f"Error saving test results: {e}")
 
 def test_obc_system():
-    """Test complet du système OBC"""
-    logger.info("DEBUT TEST SYSTÈME OBC")
-    print("TEST DU SYSTÈME OBC")
+    """Complete test of the OBC system"""
+    logger.info("STARTING OBC SYSTEM TEST")
+    print("TESTING OBC SYSTEM")
     print("=" * 50)
     print(f"Logs: {OBC_LOGS_DIR}")
     print("=" * 50)
@@ -180,36 +180,36 @@ def test_obc_system():
     logger.info("Test 1: Message SUMMARY normal")
     summary_msg = create_sample_mcu_message("SUMMARY")
     
-    # DEBUG: Vérifier la structure du message
+    # DEBUG: Check the structure of the message
     print(f"DEBUG: Message keys: {list(summary_msg.keys())}")
     print(f"DEBUG: Payload keys: {list(summary_msg['payload'].keys())}")
     if 'temporal_window' in summary_msg['payload']:
         window_data = summary_msg['payload']['temporal_window']['sensor_data']
-        print(f"DEBUG: Points dans temporal_window: {len(window_data)}")
+        print(f"DEBUG: Points in temporal_window: {len(window_data)}")
     
     response = handler.process_mcu_message(summary_msg)
     print(f"   Message: {summary_msg['header']['message_type']}")
-    print(f"   Reponse: {response['decision']} - {response['action']}")
+    print(f"   Response: {response['decision']} - {response['action']}")
     
-    # Gestion sécurisée de ai_analysis
+    # Safe handling of ai_analysis
     ai_analysis = response.get('ai_analysis', {})
     ai_level = ai_analysis.get('ai_level', 'UNKNOWN')
     ai_score = ai_analysis.get('ai_score', -1)
     error_msg = ai_analysis.get('error', '')
-    print(f"   Analyse IA: {ai_level} (score: {ai_score:.6f})")
+    print(f"   AI Analysis: {ai_level} (score: {ai_score:.6f})")
     if error_msg:
-        print(f"   Erreur IA: {error_msg}")
+        print(f"   AI Error: {error_msg}")
     
-    # Sauvegarde du résultat
+    # Save test results
     save_test_results("summary_normal", summary_msg, response)
     
-    # Test 2: Message ALERT_CRITICAL avec anomalie
-    print("\n2. TEST MESSAGE ALERT_CRITICAL (anomalie)")
-    logger.info("Test 2: Message ALERT_CRITICAL avec anomalie")
+    # Test 2: Message ALERT_CRITICAL with anomaly
+    print("\n2. TEST MESSAGE ALERT_CRITICAL (anomaly)")
+    logger.info("Test 2: Message ALERT_CRITICAL with anomaly")
     critical_msg = simulate_critical_anomaly()
     response = handler.process_mcu_message(critical_msg)
     print(f"   Message: {critical_msg['header']['message_type']}")
-    print(f"   Reponse: {response['decision']} - {response['action']}")
+    print(f"   Response: {response['decision']} - {response['action']}")
     
     ai_analysis = response.get('ai_analysis', {})
     ai_level = ai_analysis.get('ai_level', 'UNKNOWN')
@@ -217,27 +217,27 @@ def test_obc_system():
     error_msg = ai_analysis.get('error', '')
     print(f"   Analyse IA: {ai_level} (score: {ai_score:.6f})")
     if error_msg:
-        print(f"   Erreur IA: {error_msg}")
+        print(f"   AI Error: {error_msg}")
     
-    # Sauvegarde du résultat
+    # Saving the result
     save_test_results("critical_anomaly", critical_msg, response)
     
-    # Test 3: Message sans données temporelles
-    print("\n3. TEST MESSAGE SANS DONNEES TEMPORELLES")
-    logger.info("Test 3: Message sans données temporelles")
+    # Test 3: Message without temporal data
+    print("\n3. TEST MESSAGE WITHOUT TEMPORAL DATA")
+    logger.info("Test 3: Message without temporal data")
     incomplete_msg = create_sample_mcu_message("SUMMARY", include_window=False)
     response = handler.process_mcu_message(incomplete_msg)
     print(f"   Message: {incomplete_msg['header']['message_type']}")
-    print(f"   Reponse: {response['decision']} - {response.get('error', 'Aucune erreur')}")
+    print(f"   Response: {response['decision']} - {response.get('error', 'No error')}")
     
-    # Sauvegarde du résultat
+    # Saving the result
     save_test_results("no_temporal_data", incomplete_msg, response)
     
-    # Test 4: Génération réponse structurée (seulement si ai_analysis existe)
-    print("\n4. TEST GENERATION REPONSE STRUCTUREE")
-    logger.info("Test 4: Génération réponse structurée")
+    # Test 4: Generating structured response (only if ai_analysis exists)
+    print("\n4. TEST GENERATING STRUCTURED RESPONSE")
+    logger.info("Test 4: Generating structured response")
     
-    # Réutiliser la réponse du test 2 qui devrait avoir des données
+    # Reuse the answer from test 2 which should have data
     test_response = handler.process_mcu_message(critical_msg)
     
     if 'ai_analysis' in test_response:
@@ -246,31 +246,30 @@ def test_obc_system():
             test_response['ai_analysis'],
             {"decision": test_response['decision'], "action": test_response['action'], "notes": test_response.get('notes', '')}
         )
-        print(f"   Reponse structuree generee: {structured_response['header']['message_type']}")
-        print(f"   Priorite: {structured_response['header']['priority']}")
+        print(f"   Structured response generated: {structured_response['header']['message_type']}")
+        print(f"   Priority: {structured_response['header']['priority']}")
         
-        # Sauvegarde de la réponse structurée
+        # Saving the structured response
         save_test_results("structured_response", critical_msg, structured_response)
     else:
-        print("   Impossible de generer la reponse structuree - analyse IA manquante")
-        print(f"   Keys dans la reponse: {list(test_response.keys())}")
-        logger.warning("Impossible de generer reponse structuree - analyse IA manquante")
+        print("   Impossible to generate structured response - missing AI analysis")
+        print(f"   Keys in response: {list(test_response.keys())}")
+        logger.warning("Impossible to generate structured response - missing AI analysis")
     
     print("\n" + "=" * 50)
-    print("TEST TERMINE")
-    logger.info("TEST SYSTÈME OBC TERMINE AVEC SUCCES")
-
+    print("TEST FINISHED")
+    logger.info("OBC SYSTEM TEST FINISHED SUCCESSFULLY")
 def main():
-    """Point d'entrée principal avec gestion des arguments"""
+    """Main entry point with argument handling"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Test du système OBC")
+    parser = argparse.ArgumentParser(description="OBC system test")
     parser.add_argument("--test", choices=["all", "summary", "critical", "notemporal"], 
-                       default="all", help="Type de test à exécuter")
+                       default="all", help="Type of test to run")
     
     args = parser.parse_args()
     
-    logger.info(f"Lancement test OBC - Type: {args.test}")
+    logger.info(f"Starting OBC test - Type: {args.test}")
     print(f"Configuration logs: {OBC_LOGS_DIR}")
     
     test_obc_system()

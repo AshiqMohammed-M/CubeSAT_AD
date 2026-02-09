@@ -1,0 +1,15 @@
+{
+  "header": {
+    "message_id": 473,
+    "timestamp": "2025-12-10T05:54:06.347895Z",
+    "source": "EPS_MCU",
+    "message_type": "STATUS_HEARTBEAT",
+    "priority": "MEDIUM",
+    "version": "1.0"
+  },
+  "payload": {
+    "system_status": "NORMAL",
+    "uptime_cycles": 120,
+    "rule_engine_status": "OPERATIONAL"
+  }
+}

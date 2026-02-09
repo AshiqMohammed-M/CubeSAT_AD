@@ -5,27 +5,27 @@ import functools
 import json
 import pandas as pd
 from datetime import datetime
-
+#completed
 def measure_resource_usage(func):
-    """Décorateur pour mesurer temps d'exécution et mémoire"""
+    """Decorator to measure execution time and memory"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         process = psutil.Process(os.getpid())
         
-        # Mémoire avant
+        # Memory before
         mem_before = process.memory_info().rss / (1024 * 1024)  # MB
         
-        # Temps d'exécution
+        # Execution time
         start_time = time.time()
         start_perf = time.perf_counter()
         
-        # Exécution fonction
+        # Function execution
         result = func(*args, **kwargs)
         
         end_perf = time.perf_counter()
         end_time = time.time()
         
-        # Mémoire après
+        # Memory after
         mem_after = process.memory_info().rss / (1024 * 1024)  # MB
         
         return {
@@ -43,13 +43,13 @@ class ResourceMonitor:
         self.initial_memory = self.process.memory_info().rss / (1024 * 1024)
         self.usage_data = []
         
-        # Créer le dossier de sortie
+        # Create output directory
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.output_dir = os.path.join(BASE_DIR, "data", "mcu", "outputs", "resource_monitoring")
         os.makedirs(self.output_dir, exist_ok=True)
     
     def get_current_usage(self):
-        """Retourne l'utilisation actuelle des ressources"""
+        """Returns current resource usage"""
         memory = self.process.memory_info().rss / (1024 * 1024)
         cpu = self.process.cpu_percent()
         
@@ -62,21 +62,21 @@ class ResourceMonitor:
         
         self.usage_data.append(usage_data)
         
-        # Sauvegarder périodiquement
+        # Save periodically
         if len(self.usage_data) % 10 == 0:
             self.save_usage_data()
         
         return usage_data
     
     def save_usage_data(self):
-        """Sauvegarde les données d'utilisation des ressources"""
+        """Saves resource usage data"""
         try:
-            # Sauvegarder en CSV
+            # Save to CSV
             csv_path = os.path.join(self.output_dir, "cpu_memory_usage.csv")
             df = pd.DataFrame(self.usage_data)
             df.to_csv(csv_path, index=False)
             
-            # Sauvegarder un rapport JSON
+            # Save JSON report
             report_path = os.path.join(self.output_dir, "performance_report.json")
             if len(self.usage_data) > 0:
                 report = {
@@ -92,4 +92,4 @@ class ResourceMonitor:
                     json.dump(report, f, indent=2)
                     
         except Exception as e:
-            print(f"Erreur sauvegarde données ressources: {e}")
+            print(f"Resource data save error: {e}")

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-GESTIONNAIRE DE MESSAGES OBC
-Reçoit et traite les messages du MCU
+OBC MESSAGE MANAGER
+Receives and processes messages from the MCU
 """
-
+#completed
 import json
 import logging
 import sys
@@ -11,7 +11,7 @@ import os
 import numpy as np
 from datetime import datetime
 
-# Configuration des chemins
+# Path configuration
 current_dir = os.path.dirname(os.path.abspath(__file__))
 obc_dir = os.path.dirname(current_dir)
 src_dir = os.path.dirname(obc_dir)
@@ -24,61 +24,61 @@ sys.path.insert(0, obc_dir)
 try:
     from ai.ai_complex_inference import obc_ai
     AI_AVAILABLE = True
-    print("INFO: IA OBC chargee avec succes")
+    print("INFO: OBC AI loaded successfully")
 except ImportError as e:
-    print(f"ATTENTION: IA non disponible - {e}")
+    print(f"WARNING: AI not available - {e}")
     AI_AVAILABLE = False
 
 class OBCMessageHandler:
     def __init__(self):
         self.logger = logging.getLogger("OBC_MessageHandler")
-        self.logger.info("Initialisation du gestionnaire de messages OBC")
+        self.logger.info("Initializing the OBC message handler")
         self.ai_available = AI_AVAILABLE
 
     def process_mcu_message(self, message_json):
         """
-        Traite un message JSON reçu du MCU
+        Processes a JSON message received from the MCU
         """
         try:
-            # Conversion si nécessaire
+            # Conversion if necessary
             if isinstance(message_json, str):
                 message = json.loads(message_json)
             else:
                 message = message_json
             
-            self.logger.info(f"Message recu: {message.get('message_type', 'UNKNOWN')}")
+            self.logger.info(f"Message received: {message.get('message_type', 'UNKNOWN')}")
             
-            # Extraction des données de fenêtre temporelle
+            # Extraction of temporal window data
             temporal_window = self._extract_temporal_data(message)
             
             if temporal_window is None:
-                return self._generate_error_response("Donnees temporelles manquantes")
+                return self._generate_error_response("Missing temporal data")
             
-            # Analyse IA complexe (si disponible)
+            # Complex AI analysis (if available)
             if self.ai_available:
                 ai_result = obc_ai.analyze_sequence(temporal_window)
             else:
                 ai_result = self._simulate_ai_analysis(temporal_window)
             
-            # Génération de la réponse
+            # GGeneration of the response
             response = self._generate_obc_response(message, ai_result)
             
-            self.logger.info(f"Reponse generee: {response.get('decision', 'UNKNOWN')}")
+            self.logger.info(f"Response generated: {response.get('decision', 'UNKNOWN')}")
             return response
             
         except Exception as e:
-            self.logger.error(f"Erreur traitement message: {e}")
+            self.logger.error(f"Error processing message: {e}")
             return self._generate_error_response(str(e))
 
     def _extract_temporal_data(self, message):
-        """Extrait les données de la fenêtre temporelle"""
+        """Extracts temporal window data"""
         try:
             payload = message.get('payload', {})
             
-            # Recherche des données temporelles
+            # Search for temporal data
             temporal_data = None
             
-            # Cas 1: Données dans temporal_window
+            # Case 1: Data in temporal_window
             if 'temporal_window' in payload:
                 window_data = payload['temporal_window'].get('sensor_data', [])
                 if window_data and len(window_data) >= 30:
@@ -90,7 +90,7 @@ class OBCMessageHandler:
                     ] for point in window_data])
                     return temporal_data
             
-            # Cas 2: Données directes dans sensor_data
+            # Case 2: Direct data in sensor_data
             elif 'sensor_data' in payload:
                 sensor_data = payload['sensor_data']
                 if isinstance(sensor_data, list) and len(sensor_data) >= 30:
@@ -99,18 +99,18 @@ class OBCMessageHandler:
                         point.get('T_batt', 0), point.get('V_bus', 0),
                         point.get('I_bus', 0), point.get('V_solar', 0),
                         point.get('I_solar', 0)
-                    ] for point in sensor_data[-30:]])  # Derniers 30 points
+                    ] for point in sensor_data[-30:]])  # Last 30 points
                     return temporal_data
             
             return None
             
         except Exception as e:
-            self.logger.error(f"Erreur extraction donnees: {e}")
+            self.logger.error(f"Error extracting data: {e}")
             return None
 
     def _simulate_ai_analysis(self, temporal_window):
-        """Simule l'analyse IA quand le modèle n'est pas disponible"""
-        # Simulation simple basée sur la température
+        """Simulates AI analysis when the model is not available"""
+        # simple simulation based on temperature
         avg_temp = np.mean(temporal_window[:, 2])  # T_batt
         
         if avg_temp > 60:
@@ -139,7 +139,7 @@ class OBCMessageHandler:
             }
 
     def _generate_obc_response(self, original_message, ai_result):
-        """Génère la réponse de l'OBC"""
+        """Generates the OBC response"""
         message_type = original_message.get('message_type', 'UNKNOWN')
         ai_level = ai_result.get('ai_level', 'ERROR')
         
@@ -154,49 +154,49 @@ class OBCMessageHandler:
             "notes": ""
         }
         
-        # Logique de décision basée sur l'analyse IA
+        # Decision logic based on AI analysis
         if ai_level == "CRITICAL":
             response.update({
                 "decision": "CONFIRM",
                 "action": "ISOLATE_BATTERY",
-                "notes": "Anomalie critique confirmee par IA OBC"
+                "notes": "Critical anomaly confirmed by OBC AI"
             })
         elif ai_level == "WARNING":
             response.update({
                 "decision": "MONITOR", 
                 "action": "INCREASE_SAMPLING",
-                "notes": "Anomalie warning detectee - surveillance renforcee"
+                "notes": "Anomaly warning detected - increased monitoring"
             })
         elif ai_level == "NORMAL":
             response.update({
                 "decision": "IGNORE",
                 "action": "NONE",
-                "notes": "Aucune anomalie detectee par IA OBC"
+                "notes": "No anomaly detected by OBC AI"
             })
         else:  # ERROR
             response.update({
                 "decision": "REQUEST_RETRANSMISSION",
                 "action": "NONE",
-                "notes": "Erreur analyse IA - donnees invalides"
+                "notes": "AI analysis error - invalid data"
             })
         
         return response
 
     def _generate_error_response(self, error_msg):
-        """Génère une réponse d'erreur"""
+        """Generates an error response"""
         return {
             "timestamp": datetime.now().isoformat() + "Z",
             "decision": "ERROR",
             "action": "NONE",
             "error": error_msg,
-            "notes": "Erreur lors du traitement du message"
+            "notes": "Error processing message"
         }
 
-# Instance globale
+# Global instance
 message_handler = OBCMessageHandler()
 
 def process_incoming_message(message_json):
     """
-    Fonction utilitaire pour traiter un message MCU
+    Utility function to process an MCU message
     """
     return message_handler.process_mcu_message(message_json)

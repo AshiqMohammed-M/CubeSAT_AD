@@ -8,12 +8,12 @@ from mcu_resource_monitor import measure_resource_usage, ResourceMonitor
 from mcu_data_interface import DataInterface
 from mcu_logger import setup_logger
 
-
+#completed
 class MCU_MainLoop:
     def __init__(self, data_source="csv", data_path=None):
         self.logger = setup_logger("mcu_main_loop.log")
         
-        # Utiliser le chemin absolu si aucun chemin n'est fourni
+        # Use absolute path if no path is provided
         if data_path is None:
             BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             data_path = os.path.join(BASE_DIR, "data", "dataset", "pro_eps_dataset.csv")
@@ -27,7 +27,7 @@ class MCU_MainLoop:
             "ALERT_CRITICAL": 0, "SUMMARY": 0, "DIAGNOSTIC_SENSOR": 0, "STATUS_HEARTBEAT": 0
         }
         
-        self.logger.info("MCU_MainLoop initialisé")
+        self.logger.info("MCU_MainLoop initialized")
 
     @measure_resource_usage
     def process_sample(self, sample):
@@ -38,7 +38,7 @@ class MCU_MainLoop:
         if max_samples and max_samples < total_samples:
             total_samples = max_samples
             
-        self.logger.info(f"Début simulation sur {total_samples} échantillons")
+        self.logger.info(f"Simulation start on {total_samples} samples")
         start_time = time.time()
         
         for i in range(total_samples):
@@ -63,10 +63,10 @@ class MCU_MainLoop:
             
             if i % 100 == 0:
                 current_usage = self.resource_monitor.get_current_usage()
-                self.logger.info(f"Progression: {i}/{total_samples} | Mémoire: {current_usage['memory_MB']}MB")
+                self.logger.info(f"Progress: {i}/{total_samples} | Memory: {current_usage['memory_MB']}MB")
         
         execution_time = time.time() - start_time
-        self.logger.info(f"Simulation terminée en {execution_time:.2f}s")
+        self.logger.info(f"Simulation completed in {execution_time:.2f}s")
         self.save_results()
         return self.generate_report(execution_time)
 
@@ -76,12 +76,12 @@ class MCU_MainLoop:
         obc_messages_dir = os.path.join(outputs_dir, "obc_messages")
         os.makedirs(obc_messages_dir, exist_ok=True)
             
-        # Sauvegarder les résultats détaillés
+        # Save detailed results
         results_df = pd.DataFrame(self.results)
         results_path = os.path.join(outputs_dir, "mcu_simulation_results.csv")
         results_df.to_csv(results_path, index=False)
         
-        # Sauvegarder les statistiques
+        # Save statistics
         stats_path = os.path.join(outputs_dir, "mcu_simulation_stats.csv")
         stats_df = pd.DataFrame([{
             "timestamp": datetime.now().isoformat(), "total_samples": len(self.results),
@@ -92,7 +92,7 @@ class MCU_MainLoop:
         }])
         stats_df.to_csv(stats_path, index=False)
         
-        # Sauvegarder les messages OBC
+        # Save OBC messages
         summary_messages_path = os.path.join(obc_messages_dir, "summary_messages.json")
         with open(summary_messages_path, 'w') as f:
             json.dump({
@@ -114,15 +114,15 @@ class MCU_MainLoop:
         }
         
         print("\n" + "="*50)
-        print("RAPPORT SIMULATION MCU")
+        print("MCU SIMULATION REPORT")
         print("="*50)
-        print(f"Échantillons traités: {report['total_samples']}")
-        print(f"Temps d'exécution: {report['execution_time_seconds']}s")
-        print(f"Débit: {report['samples_per_second']} éch./s")
-        print(f"Alertes critiques: {report['alerts_breakdown']['ALERT_CRITICAL']}")
-        print(f"Résumés: {report['alerts_breakdown']['SUMMARY']}")
-        print(f"Défauts capteurs: {report['alerts_breakdown']['DIAGNOSTIC_SENSOR']}")
-        print(f"Utilisation mémoire: {report['resource_usage']['memory_MB']}MB")
+        print(f"Processed samples: {report['total_samples']}")
+        print(f"Execution time: {report['execution_time_seconds']}s")
+        print(f"Throughput: {report['samples_per_second']} samples/s")
+        print(f"Critical alerts: {report['alerts_breakdown']['ALERT_CRITICAL']}")
+        print(f"Summaries: {report['alerts_breakdown']['SUMMARY']}")
+        print(f"Sensor faults: {report['alerts_breakdown']['DIAGNOSTIC_SENSOR']}")
+        print(f"Memory usage: {report['resource_usage']['memory_MB']}MB")
         print("="*50)
         
         return report
@@ -131,28 +131,29 @@ def main():
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     data_path = os.path.join(BASE_DIR, "data", "dataset", "pro_eps_dataset.csv")
     
-    print(f"Recherche du fichier: {data_path}")
+    print(f"Searching for file: {data_path}")
     
     if not os.path.exists(data_path):
-        print(f"ERREUR: Fichier données introuvable: {data_path}")
+        print(f"ERROR: Data file not found: {data_path}")
         return None
     
-    print("Fichier de données trouvé!")
-    print("Initialisation de la simulation MCU...")
+    print("Data file found!")
+    print("Initializing MCU simulation...")
     
     try:
         mcu_sim = MCU_MainLoop(data_source="csv", data_path=data_path)
         report = mcu_sim.run_simulation(max_samples=1000)
         return report
     except Exception as e:
-        print(f"ERREUR lors de la simulation: {e}")
+        print(f"ERROR during simulation: {e}")
         import traceback
         traceback.print_exc()
         return None
 
 if __name__ == "__main__":
     main()
-mcu_data_interface.py :
+
+#mcu_data_interface.py :
 import pandas as pd
 import random
 import math
@@ -164,17 +165,17 @@ class DataInterface:
         self.current_index = 0
         
         if source == "csv" and path:
-            # Vérifier que le fichier existe
+            # Verify that the file exists
             if not os.path.exists(path):
-                raise FileNotFoundError(f"Fichier introuvable: {path}")
+                raise FileNotFoundError(f"File not found: {path}")
             
             self.df = pd.read_csv(path)
             self.data = self.df.to_dict(orient="records")
             self.log_size = len(self.data)
-            print(f"Chargé {self.log_size} échantillons depuis {path}")
+            print(f"Loaded {self.log_size} samples from {path}")
         elif source == "simulated":
             self.data = None
-            self.log_size = 1000  # Taille par défaut pour simulation
+            self.log_size = 1000  # Default size for simulation
     
     def get_next(self, index=None):
         if self.source == "csv":
@@ -189,7 +190,7 @@ class DataInterface:
                 return None
                 
         elif self.source == "simulated":
-            # Génération de données simulées réalistes
+            # Realistic simulated data generation
             return {
                 "timestamp": f"2024-{random.randint(1,12):02d}-{random.randint(1,28):02d} "
                            f"{random.randint(0,23):02d}:{random.randint(0,59):02d}:{random.randint(0,59):02d}",
@@ -203,21 +204,21 @@ class DataInterface:
             }
     
     def get_sample(self, index):
-        """Récupère un échantillon spécifique"""
+        """Retrieve a specific sample"""
         if self.source == "csv" and 0 <= index < len(self.data):
             return self.data[index]
         return None
     
     def get_total_samples(self):
-        """Retourne le nombre total d'échantillons"""
+        """Return the total number of samples"""
         if self.source == "csv":
             return len(self.data)
         return self.log_size
     
     def reset(self):
-        """Réinitialise l'index de lecture"""
+        """Reset the reading index"""
         self.current_index = 0
-mcu_resource_monitor.py :
+# mcu_resource_monitor.py :
 
 import time
 import psutil
@@ -228,25 +229,25 @@ import pandas as pd
 from datetime import datetime
 
 def measure_resource_usage(func):
-    """Décorateur pour mesurer temps d'exécution et mémoire"""
+    """Decorator to measure execution time and memory"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         process = psutil.Process(os.getpid())
         
-        # Mémoire avant
+        # Memory before
         mem_before = process.memory_info().rss / (1024 * 1024)  # MB
         
-        # Temps d'exécution
+        # Execution time
         start_time = time.time()
         start_perf = time.perf_counter()
         
-        # Exécution fonction
+        # Function execution
         result = func(*args, **kwargs)
         
         end_perf = time.perf_counter()
         end_time = time.time()
         
-        # Mémoire après
+        # Memory after
         mem_after = process.memory_info().rss / (1024 * 1024)  # MB
         
         return {
@@ -264,13 +265,13 @@ class ResourceMonitor:
         self.initial_memory = self.process.memory_info().rss / (1024 * 1024)
         self.usage_data = []
         
-        # Créer le dossier de sortie
+        # Create output directory
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.output_dir = os.path.join(BASE_DIR, "data", "mcu", "outputs", "resource_monitoring")
         os.makedirs(self.output_dir, exist_ok=True)
     
     def get_current_usage(self):
-        """Retourne l'utilisation actuelle des ressources"""
+        """Return the current resource usage"""
         memory = self.process.memory_info().rss / (1024 * 1024)
         cpu = self.process.cpu_percent()
         
@@ -283,21 +284,21 @@ class ResourceMonitor:
         
         self.usage_data.append(usage_data)
         
-        # Sauvegarder périodiquement
+        # Periodically save
         if len(self.usage_data) % 10 == 0:
             self.save_usage_data()
         
         return usage_data
     
     def save_usage_data(self):
-        """Sauvegarde les données d'utilisation des ressources"""
+        """Save resource usage data"""
         try:
-            # Sauvegarder en CSV
+            # Save as CSV
             csv_path = os.path.join(self.output_dir, "cpu_memory_usage.csv")
             df = pd.DataFrame(self.usage_data)
             df.to_csv(csv_path, index=False)
             
-            # Sauvegarder un rapport JSON
+            # Save a JSON report
             report_path = os.path.join(self.output_dir, "performance_report.json")
             if len(self.usage_data) > 0:
                 report = {
@@ -313,4 +314,4 @@ class ResourceMonitor:
                     json.dump(report, f, indent=2)
                     
         except Exception as e:
-            print(f"Erreur sauvegarde données ressources: {e}")
+            print(f"Error saving resource usage data: {e}")

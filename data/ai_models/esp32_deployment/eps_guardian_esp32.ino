@@ -57,19 +57,19 @@ void setup() {
     Serial.begin(115200);
     while (!Serial);
     
-    Serial.println("Initialisation EPS Guardian AI...");
-    Serial.print("Taille modèle: ");
+    Serial.println("Initializing EPS Guardian AI...");
+    Serial.print("Model size: ");
     Serial.print(eps_guardian::ai_model::g_ai_model_size);
     Serial.println(" bytes");
     
     if (!guardianAI.initialize()) {
-        Serial.println("ERREUR: Initialisation IA échouée");
+        Serial.println("ERROR: AI initialization failed");
         return;
     }
-    Serial.println("EPS Guardian AI initialisé avec succès");
+    Serial.println("EPS Guardian AI initialized successfully");
     
-    // Afficher les features utilisées
-    Serial.println("Features utilisées:");
+    // Display features used
+    Serial.println("Features used:");
     for (int i = 0; i < 18; i++) {
         Serial.print("  ");
         Serial.print(i);
@@ -79,7 +79,7 @@ void setup() {
 }
 
 void loop() {
-    // Données capteurs simulées (normalisées)
+    // Simulated sensor data (normalized)
     float sensor_data[18] = {
         0.5, 0.5, 0.5, 0.5, 0.5,  // V_batt, I_batt, T_batt, V_bus, I_bus
         0.5, 0.5, 0.5, 0.5, 0.5,  // V_solar, I_solar, SOC, T_eps, P_batt
@@ -90,13 +90,13 @@ void loop() {
     float error = guardianAI.detectAnomaly(sensor_data);
     
     if (error < 0) {
-        Serial.println("ERREUR: Inference échouée");
+        Serial.println("ERROR: Inference failed");
     } else {
         int level = guardianAI.getAnomalyLevel(error);
         
-        Serial.print("Erreur reconstruction: ");
+        Serial.print("Reconstruction error: ");
         Serial.print(error, 6);
-        Serial.print(" | Niveau anomalie: ");
+        Serial.print(" | Anomaly level: ");
         
         switch(level) {
             case 0: Serial.println("NORMAL"); break;

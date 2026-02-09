@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
 """
-INFÉRENCE IA COMPLEXE OBC
-Détection d'anomalies avec le modèle LSTM Autoencoder entraîné
+AI COMPLEX OBC INFERENCE
+Anomaly detection with the trained LSTM Autoencoder model
 """
-
+#completed
 import os
 import numpy as np
 import json
 import logging
 import joblib
 
-# Configuration des chemins
+# Configuring paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
 obc_dir = os.path.dirname(current_dir)
 src_dir = os.path.dirname(obc_dir)
 project_root = os.path.dirname(src_dir)
 
-# ========== CHEMINS CORRIGÉS ==========
-# Tous les outputs dans obc/
+# ========== CORRECTED PATHS ==========
+# All outputs in obc/
 OBC_AI_DIR = os.path.join(project_root, "data", "ai_models", "model_complex")
 OBC_LOGS_DIR = os.path.join(project_root, "data", "obc", "logs")
 OBC_OUTPUTS_DIR = os.path.join(project_root, "data", "obc", "outputs")
-DATA_DIR = os.path.join(project_root, "data", "ai_training_base")  # Corrigé
+DATA_DIR = os.path.join(project_root, "data", "ai_training_base")  # Corrected
 
-# Création des dossiers OBC
+# Creating OBC folders
 os.makedirs(OBC_LOGS_DIR, exist_ok=True)
 os.makedirs(OBC_OUTPUTS_DIR, exist_ok=True)
 
-# Logging - maintenant dans obc/logs/
+# Logging - now in obc/logs/
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -47,21 +47,21 @@ class OBC_AI:
         self.simulation_mode = True
         self.model_available = False
         
-        logger.info("Initialisation de l'IA OBC")
+        logger.info("Initializing OBC AI")
         logger.info(f"Logs: {OBC_LOGS_DIR}")
         logger.info(f"Outputs: {OBC_OUTPUTS_DIR}")
         self.load_model_and_thresholds()
 
     def load_model_and_thresholds(self):
-        """Charge le modèle et les seuils"""
+        """Load the model and thresholds"""
         try:
-            # Chargement des seuils
+            # Loading thresholds
             thresholds_path = os.path.join(OBC_AI_DIR, "ai_thresholds.json")
-            logger.info(f"Recherche des seuils: {thresholds_path}")
+            logger.info(f"Searching for thresholds: {thresholds_path}")
             
             if not os.path.exists(thresholds_path):
-                logger.error(f"Seuils non trouves: {thresholds_path}")
-                # Créer des seuils par défaut
+                logger.error(f"Thresholds not found: {thresholds_path}")
+                # Create default thresholds
                 self.thresholds = {
                     "normal_threshold": 0.001,
                     "warning_threshold": 0.002,
@@ -73,125 +73,125 @@ class OBC_AI:
                         "max_error": 0.005
                     }
                 }
-                logger.info("Seuils par defaut crees")
+                logger.info("Default thresholds created")
             else:
                 with open(thresholds_path, 'r') as f:
                     thresholds_data = json.load(f)
                 self.thresholds = thresholds_data["anomaly_thresholds"]
-                logger.info("Seuils d'anomalie charges")
+                logger.info("Anomaly thresholds loaded")
             
-            # Chargement du modèle avec compile=False
+            # Loading model with compile=False
             model_path = os.path.join(OBC_AI_DIR, "ai_model_lstm_autoencoder.h5")
             
             if os.path.exists(model_path):
                 try:
                     from tensorflow.keras.models import load_model
                     
-                    print(f"Tentative de chargement du modele: {model_path}")
-                    print(f"Taille: {os.path.getsize(model_path)} bytes")
+                    print(f"Attempting to load model: {model_path}")
+                    print(f"Size: {os.path.getsize(model_path)} bytes")
                     
-                    # SOLUTION 1: Charger sans compilation
+                    # SOLUTION 1: Load without compilation
                     try:
                         self.model = load_model(model_path, compile=False)
                         self.simulation_mode = False
                         self.model_available = True
-                        print("SUCCES: Modele LSTM charge (compile=False)")
-                        logger.info("Modele LSTM Autoencoder charge avec succes (compile=False)")
+                        print("SUCCESS: LSTM model loaded (compile=False)")
+                        logger.info("LSTM Autoencoder model successfully loaded (compile=False)")
                         
                     except Exception as e:
-                        print(f"Erreur avec compile=False: {e}")
+                        print(f"Error with compile=False: {e}")
                         self._fallback_to_simulation()
                             
                 except ImportError as e:
-                    print(f"TensorFlow non disponible: {e}")
+                    print(f"TensorFlow not available: {e}")
                     self._fallback_to_simulation()
                 except Exception as e:
-                    print(f"Erreur inattendue: {e}")
+                    print(f"Unexpected error: {e}")
                     self._fallback_to_simulation()
             else:
-                print("Modele non trouve sur le disque")
+                print("Model not found on disk")
                 self._fallback_to_simulation()
             
-            # Chargement ou création du scaler - CHEMIN CORRIGÉ
+            # Loading or creating scaler - CORRECTED PATH
             scaler_path = os.path.join(DATA_DIR, "ai_sequence_scaler.pkl")
             if os.path.exists(scaler_path):
                 try:
                     self.scaler = joblib.load(scaler_path)
-                    logger.info("Scaler charge")
+                    logger.info("Scaler loaded")
                 except Exception as e:
-                    logger.warning(f"Erreur chargement scaler: {e} - creation d'un scaler par defaut")
+                    logger.warning(f"Error loading scaler: {e} - creating default scaler")
                     self._create_default_scaler()
             else:
-                logger.warning("Scaler non trouve - creation d'un scaler par defaut")
+                logger.warning("Scaler not found - creating default scaler")
                 self._create_default_scaler()
             
             self.is_loaded = True
-            logger.info("IA OBC initialisee avec succes")
+            logger.info("OBC AI successfully initialized")
             return True
             
         except Exception as e:
-            logger.error(f"Erreur lors du chargement de l'IA: {e}")
+            logger.error(f"Error loading AI: {e}")
             import traceback
             logger.error(traceback.format_exc())
             return False
 
     def _fallback_to_simulation(self):
-        """Basculer en mode simulation"""
+        """Switch to simulation mode"""
         self.model = None
         self.simulation_mode = True
         self.model_available = False
-        print("UTILISATION: Mode simulation active")
-        logger.warning("Mode simulation active - modele TensorFlow non disponible")
+        print("USING: Simulation mode active")
+        logger.warning("Simulation mode active - TensorFlow model not available")
 
     def _create_default_scaler(self):
-        """Crée un scaler par défaut"""
+        """Create a default scaler"""
         from sklearn.preprocessing import StandardScaler
         self.scaler = StandardScaler()
-        # Fit avec des données simulées réalistes
+        # Fit with realistic simulated data
         dummy_data = np.array([
-            [7.4, 1.2, 35.0, 7.8, 0.8, 15.2, 1.5]  # Valeurs typiques
+            [7.4, 1.2, 35.0, 7.8, 0.8, 15.2, 1.5]  # Typical values
         ] * 100) + np.random.randn(100, 7) * 0.1
         self.scaler.fit(dummy_data)
 
     def analyze_sequence(self, sequence_data):
         """
-        Analyse une séquence temporelle et retourne le niveau d'anomalie
+        Analyzes a time sequence and returns the anomaly level
         """
         if not self.is_loaded:
             return self._simulate_analysis(sequence_data)
         
-        # CORRECTION: Utiliser le vrai modèle si disponible
+        # CORRECTION: Use the real model if available
         if self.model is not None:
             try:
-                # Vérification et préparation des données
+                # Data verification and preparation
                 if sequence_data.shape != (30, 7):
-                    logger.warning(f"Shape incorrecte: {sequence_data.shape}, attendu: (30, 7)")
+                    logger.warning(f"Incorrect shape: {sequence_data.shape}, expected: (30, 7)")
                     return self._simulate_analysis(sequence_data)
                 
-                # Nettoyage des données
+                # Data cleaning
                 sequence_data = np.nan_to_num(sequence_data, nan=0.0, posinf=0.0, neginf=0.0)
                 
-                # CORRECTION: Normalisation - méthode corrigée
-                print(f"Shape avant normalisation: {sequence_data.shape}")
+                # CORRECTION: Normalization - corrected method
+                print(f"Shape before normalization: {sequence_data.shape}")
                 
-                # Méthode corrigée: Reshape correct pour le scaler
+                # Corrected method: Proper reshape for scaler
                 sequence_normalized = self.scaler.transform(sequence_data.reshape(-1, 7))
                 sequence_normalized = sequence_normalized.reshape(1, 30, 7)
-                print(f"Shape après normalisation: {sequence_normalized.shape}")
+                print(f"Shape after normalization: {sequence_normalized.shape}")
                 
-                # Prédiction avec le modèle LSTM
-                print("UTILISATION DU VRAI MODELE LSTM...")
+                # Prediction with LSTM model
+                print("USING THE REAL LSTM MODEL...")
                 reconstructed = self.model.predict(sequence_normalized, verbose=0)
                 
-                # Calcul de l'erreur de reconstruction
+                # Calculation of reconstruction error
                 reconstruction_error = np.mean(np.square(sequence_normalized - reconstructed))
                 
-                print(f"Erreur reconstruction LSTM: {reconstruction_error:.6f}")
-                print(f"Seuil normal: {self.thresholds['normal_threshold']:.6f}")
-                print(f"Seuil warning: {self.thresholds['warning_threshold']:.6f}")
-                print(f"Seuil critical: {self.thresholds['critical_threshold']:.6f}")
+                print(f"LSTM reconstruction error: {reconstruction_error:.6f}")
+                print(f"Normal threshold: {self.thresholds['normal_threshold']:.6f}")
+                print(f"Warning threshold: {self.thresholds['warning_threshold']:.6f}")
+                print(f"Critical threshold: {self.thresholds['critical_threshold']:.6f}")
                 
-                # Détermination du niveau d'anomalie
+                # DDetermination of anomaly level
                 ai_level, confidence = self._classify_anomaly(reconstruction_error)
                 
                 result = {
@@ -208,31 +208,31 @@ class OBC_AI:
                     "model_used": "LSTM Autoencoder"
                 }
                 
-                logger.info(f"Analyse IA LSTM - Score: {reconstruction_error:.6f}, Niveau: {ai_level}")
+                logger.info(f"Analyze AI LSTM - Score: {reconstruction_error:.6f}, Level: {ai_level}")
                 
-                # SAUVEGARDE DU RÉSULTAT DANS OBC/OUTPUTS
+                # SAVE RESULT IN OBC/OUTPUTS
                 self._save_analysis_result(result, sequence_data)
                 
                 return result
                 
             except Exception as e:
-                logger.error(f"Erreur analyse LSTM: {e} - bascule vers simulation")
-                print(f"ERREUR LSTM: {e}")
+                logger.error(f"Error AI LSTM analysis: {e} - switching to simulation")
+                print(f"LSTM ERROR: {e}")
                 import traceback
                 traceback.print_exc()
                 return self._simulate_analysis(sequence_data)
         else:
-            # Mode simulation
-            print("UTILISATION MODE SIMULATION")
+            # Simulation mode
+            print("USING SIMULATION MODE")
             return self._simulate_analysis(sequence_data)
 
     def _save_analysis_result(self, result, sequence_data):
-        """Sauvegarde le résultat d'analyse dans obc/outputs/"""
+        """Saves the analysis results in obc/outputs/"""
         try:
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            # Fichier JSON de résultat
+            # Result JSON file
             result_filename = f"obc_ai_analysis_{timestamp}.json"
             result_path = os.path.join(OBC_OUTPUTS_DIR, result_filename)
             
@@ -248,22 +248,22 @@ class OBC_AI:
             with open(result_path, 'w') as f:
                 json.dump(result_data, f, indent=2)
             
-            logger.info(f"Resultat sauvegarde: {result_path}")
+            logger.info(f"Result saved: {result_path}")
             
         except Exception as e:
-            logger.error(f"Erreur sauvegarde resultat: {e}")
+            logger.error(f"Error saving result: {e}")
 
     def _simulate_analysis(self, sequence_data):
-        """Simule l'analyse IA quand le modèle n'est pas disponible"""
-        logger.info("Utilisation de l'analyse simulee")
+        """Simulates AI analysis when the model is not available"""
+        logger.info("Using simulated analysis")
         
         try:
-            # Simulation basée sur la température moyenne et autres métriques
+            # Simulation based on average temperature and other metrics
             avg_temp = np.mean(sequence_data[:, 2])  # T_batt
             avg_current = np.mean(sequence_data[:, 1])  # I_batt
             avg_voltage = np.mean(sequence_data[:, 0])  # V_batt
             
-            # Logique de détection d'anomalie simulée
+            # Simulated anomaly detection logic
             if avg_temp > 60 or avg_current > 3.0:
                 result = {
                     "ai_score": 0.95,
@@ -307,13 +307,13 @@ class OBC_AI:
                     }
                 }
             
-            # Sauvegarde même en mode simulation
+            # Save even in simulation mode
             self._save_analysis_result(result, sequence_data)
             return result
             
         except Exception as e:
-            logger.error(f"Erreur dans l'analyse simulee: {e}")
-            # Fallback si erreur
+            logger.error(f"Error in simulated analysis: {e}")
+            # Fallback if error
             result = {
                 "ai_score": 0.1,
                 "ai_level": "NORMAL",
@@ -327,7 +327,7 @@ class OBC_AI:
             return result
 
     def _classify_anomaly(self, error):
-        """Classifie l'anomalie basée sur les seuils"""
+        """Classifies the anomaly based on the thresholds"""
         if error <= self.thresholds["normal_threshold"]:
             return "NORMAL", "HIGH"
         elif error <= self.thresholds["warning_threshold"]:
@@ -336,7 +336,7 @@ class OBC_AI:
             return "CRITICAL", "HIGH"
 
     def get_model_info(self):
-        """Retourne les informations du modèle"""
+        """Returns the model information"""
         if not self.is_loaded:
             return {"status": "NOT_LOADED"}
         
@@ -358,29 +358,29 @@ class OBC_AI:
             "simulation_mode": self.model is None
         }
 
-# Instance globale pour usage facile
+# Global instance for easy use
 obc_ai = OBC_AI()
 
 def analyze_sensor_sequence(sequence_data):
     """
-    Fonction utilitaire pour analyser une séquence de capteurs
+    Utility function to analyze a sensor sequence
     """
     return obc_ai.analyze_sequence(sequence_data)
 
 if __name__ == "__main__":
-    # Test de l'IA
+    # Test the AI
     ai = OBC_AI()
-    print(f"IA chargee: {ai.is_loaded}")
-    print(f"Modele disponible: {ai.model is not None}")
-    print(f"Mode simulation: {ai.model is None}")
-    print(f"Statut complet: {json.dumps(ai.get_model_info(), indent=2)}")
+    print(f"AI loaded: {ai.is_loaded}")
+    print(f"Model available: {ai.model is not None}")
+    print(f"Simulation mode: {ai.model is None}")
+    print(f"Full status: {json.dumps(ai.get_model_info(), indent=2)}")
     
-    # Test avec des données réalistes
-    print("\nTest avec donnees simulees:")
+    # Test with realistic data
+    print("\nTest with simulated data:")
     test_sequence = np.array([
-        [7.4, 1.2, 35.0, 7.8, 0.8, 15.2, 1.5]  # Valeurs de base
+        [7.4, 1.2, 35.0, 7.8, 0.8, 15.2, 1.5]  # Basic values
     ] * 30) + np.random.randn(30, 7) * 0.1
     
     result = ai.analyze_sequence(test_sequence)
-    print("Resultat du test:")
+    print("Test result:")
     print(json.dumps(result, indent=2))

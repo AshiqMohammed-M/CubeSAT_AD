@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-ENTRAÎNEMENT DU MODÈLE IA COMPLEXE OBC
-LSTM Autoencoder pour détection d'anomalies temporelles
+OBC Complex AI Model Training
+LSTM Autoencoder for Temporal Anomaly Detection
 """
-
+#completed
 import os
 import numpy as np
 import json
@@ -18,37 +18,37 @@ import matplotlib.pyplot as plt
 import joblib
 
 def find_project_root():
-    """Trouve le répertoire racine du projet de manière robuste"""
+    """Find the project root directory robustly"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Essayer différents niveaux de profondeur
+    # Try different depth levels
     possible_roots = [
-        os.path.dirname(os.path.dirname(os.path.dirname(current_dir))),  # src/obc/ai → racine
+        os.path.dirname(os.path.dirname(os.path.dirname(current_dir))),  # src/obc/ai → root
         os.path.join(current_dir, "..", "..", ".."),  # Alternative
-        current_dir  # Dernier recours
+        current_dir  
     ]
     
     for root in possible_roots:
         root = os.path.abspath(root)
-        # Vérifier si data/ai_training_base existe
+        # Check if data/ai_training_base exists
         data_training = os.path.join(root, "data", "ai_training_base")
         if os.path.exists(data_training):
             return root
     
-    # Si rien trouvé, utiliser le répertoire courant
+    # If nothing found, use the current directory
     return current_dir
 
-# Détermination des chemins
+# Determining paths
 PROJECT_ROOT = find_project_root()
-DATA_DIR = os.path.join(PROJECT_ROOT, "data", "ai_training_base")  # CORRIGÉ: ai_training_base au lieu de mcu/training
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "ai_training_base")  # CORRECTED: ai_training_base instead of mcu/training
 OBC_AI_DIR = os.path.join(PROJECT_ROOT, "data", "ai_models", "model_complex")
 OBC_LOGS_DIR = os.path.join(PROJECT_ROOT, "data", "mcu", "logs")
 
-# Création des dossiers
+# Creation of files
 os.makedirs(OBC_AI_DIR, exist_ok=True)
 os.makedirs(OBC_LOGS_DIR, exist_ok=True)
 
-# Configuration du logging
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -59,9 +59,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("OBC_AI_Trainer")
 
-logger.info(f"Repertoire racine detecte: {PROJECT_ROOT}")
-logger.info(f"Dossier donnees: {DATA_DIR}")
-logger.info(f"Dossier OBC AI: {OBC_AI_DIR}")
+logger.info(f"Detected root directory: {PROJECT_ROOT}")
+logger.info(f"Data directory: {DATA_DIR}")
+logger.info(f"OBC AI directory: {OBC_AI_DIR}")
 
 class OBCAITrainer:
     def __init__(self):
@@ -70,7 +70,7 @@ class OBCAITrainer:
         self.training_history = None
         self.anomaly_thresholds = {}
         
-        # Initialisation des attributs pour eviter les erreurs
+        # Initialization of attributes to avoid errors
         self.sequences = None
         self.labels = None
         self.dataset_config = None
@@ -78,94 +78,94 @@ class OBCAITrainer:
         self.x_train = None
         self.x_val = None
         
-        logger.info("Initialisation de l'entraineur IA OBC")
+        logger.info("Initialization of OBC AI Trainer")
 
     def load_training_data(self):
-        """Charge les donnees d'entrainement depuis ai_training_base"""
-        logger.info("Chargement des donnees d'entrainement...")
+        """Load training data from ai_training_base"""
+        logger.info("Loading training data...")
         
         try:
-            # Verifier que le dossier existe
+            # Check if the directory exists
             if not os.path.exists(DATA_DIR):
-                logger.error(f"Dossier donnees non trouve: {DATA_DIR}")
-                logger.info("Contenu du repertoire racine:")
+                logger.error(f"Data directory not found: {DATA_DIR}")
+                logger.info("Contents of the root directory:")
                 for item in os.listdir(PROJECT_ROOT):
                     logger.info(f"  - {item}")
                 return False
             
-            # Verifier les fichiers dans le dossier
+            # Check files in the directory
             data_files = os.listdir(DATA_DIR)
-            logger.info(f"Fichiers trouves dans {DATA_DIR}: {data_files}")
+            logger.info(f"Files found in {DATA_DIR}: {data_files}")
             
-            # Chargement des sequences normalisees
+            # Loading normalized sequences
             sequences_path = os.path.join(DATA_DIR, "ai_sequence_data.npy")
             if not os.path.exists(sequences_path):
-                logger.error(f"Fichier non trouve: {sequences_path}")
+                logger.error(f"File not found: {sequences_path}")
                 return False
                 
             self.sequences = np.load(sequences_path)
-            logger.info(f"Sequences chargees: {self.sequences.shape}")
+            logger.info(f"Sequences loaded: {self.sequences.shape}")
             
-            # Chargement des labels
+            # Loading labels
             labels_path = os.path.join(DATA_DIR, "ai_sequence_labels.npy")
             if not os.path.exists(labels_path):
-                logger.error(f"Fichier non trouve: {labels_path}")
+                logger.error(f"File not found: {labels_path}")
                 return False
                 
             self.labels = np.load(labels_path)
-            logger.info(f"Labels charges: {len(self.labels)}")
+            logger.info(f"Labels loaded: {len(self.labels)}")
             
-            # Analyse des labels
+            # Analysis of labels
             unique_labels, counts = np.unique(self.labels, return_counts=True)
-            logger.info("Distribution des labels:")
+            logger.info("Distribution of labels:")
             for label, count in zip(unique_labels, counts):
                 logger.info(f"  {label}: {count} sequences ({count/len(self.labels)*100:.1f}%)")
             
-            # Chargement du scaler
+            # Loading scaler
             scaler_path = os.path.join(DATA_DIR, "ai_sequence_scaler.pkl")
             if not os.path.exists(scaler_path):
-                logger.error(f"Fichier non trouve: {scaler_path}")
+                logger.error(f"File not found: {scaler_path}")
                 return False
                 
             self.scaler = joblib.load(scaler_path)
-            logger.info("Scaler charge")
+            logger.info("Scaler loaded")
             
-            # Chargement de la configuration
+            # Loading configuration
             config_path = os.path.join(DATA_DIR, "dataset_config.json")
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
                     self.dataset_config = json.load(f)
-                logger.info("Configuration du dataset chargee")
+                logger.info("Dataset configuration loaded")
             else:
-                logger.warning("Configuration du dataset non trouvee")
+                logger.warning("Dataset configuration not found")
                 self.dataset_config = {}
             
             return True
             
         except Exception as e:
-            logger.error(f"Erreur lors du chargement des donnees: {e}")
+            logger.error(f"Error loading data: {e}")
             return False
 
     def prepare_data(self):
-        """Prepare les donnees pour l'entrainement"""
-        logger.info("Preparation des donnees...")
+        """Prepare data for training"""
+        logger.info("Preparing data...")
         
-        # Verifier que les donnees sont chargees
+        # Verify that data is loaded
         if self.sequences is None or self.labels is None:
-            logger.error("Donnees non chargees - Appelez load_training_data() d'abord")
+            logger.error("Data not loaded - Call load_training_data() first")
             return False
         
-        # Utiliser seulement les sequences NORMALES pour l'entrainement autoencoder
+        # Use only NORMAL sequences for autoencoder training
         normal_indices = np.where(self.labels == "NORMAL")[0]
         
         if len(normal_indices) == 0:
-            logger.warning("Aucune sequence NORMAL trouvee, utilisation de toutes les donnees")
+            logger.warning("No NORMAL sequences found, using all data")
             normal_indices = np.arange(len(self.sequences))
         
         self.training_sequences = self.sequences[normal_indices]
-        logger.info(f"Sequences d'entrainement (normales): {self.training_sequences.shape}")
+        logger.info(f"Training sequences (normal): {self.training_sequences.shape}")
         
-        # Separation train/validation (80/20)
+        # Train/validation split (80/20)
         split_idx = int(0.8 * len(self.training_sequences))
         self.x_train = self.training_sequences[:split_idx]
         self.x_val = self.training_sequences[split_idx:]
@@ -174,16 +174,16 @@ class OBCAITrainer:
         return True
 
     def build_lstm_autoencoder(self):
-        """Construit le modele LSTM Autoencoder"""
-        logger.info("Construction du modele LSTM Autoencoder...")
+        """Build the model LSTM Autoencoder"""
+        logger.info("Building LSTM Autoencoder model...")
         
-        # Parametres du modele
+        # Model parameters
         timesteps = self.sequences.shape[1]
         n_features = self.sequences.shape[2]
-        encoding_dim = 32  # Dimension de l'espace latent
+        encoding_dim = 32  # Latent space dimension
         
         logger.info(f"Architecture: {timesteps} timesteps x {n_features} features")
-        logger.info(f"Dimension latente: {encoding_dim}")
+        logger.info(f"Latent dimension: {encoding_dim}")
         
         # Encoder
         inputs = Input(shape=(timesteps, n_features))
@@ -197,7 +197,7 @@ class OBCAITrainer:
         decoded = LSTM(64, activation='relu', return_sequences=True, name="decoder_lstm2")(decoded)
         decoded = TimeDistributed(Dense(n_features), name="output")(decoded)
         
-        # Modele complet
+        # Complete model
         self.model = Model(inputs, decoded, name="lstm_autoencoder")
         
         # Compilation
@@ -207,17 +207,17 @@ class OBCAITrainer:
             metrics=['mae']
         )
         
-        logger.info("Modele compile avec succes")
+        logger.info("Model compiled successfully")
         
-        # Resume du modele
+        # Model summary
         total_params = self.model.count_params()
-        logger.info(f"Nombre total de parametres: {total_params:,}")
+        logger.info(f"Total number of parameters: {total_params:,}")
         
         return True
 
     def train_model(self, epochs=100, batch_size=32):
-        """Entraine le modele"""
-        logger.info("Debut de l'entrainement...")
+        """Train the model"""
+        logger.info("Starting training...")
         
         # Callbacks
         callbacks = [
@@ -225,9 +225,9 @@ class OBCAITrainer:
             ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6, verbose=1)
         ]
         
-        logger.info(f"Parametres d'entrainement: {epochs} epochs, batch_size={batch_size}")
+        logger.info(f"Training parameters: {epochs} epochs, batch_size={batch_size}")
         
-        # Entrainement
+        # Training
         self.training_history = self.model.fit(
             self.x_train, self.x_train,
             epochs=epochs,
@@ -237,35 +237,35 @@ class OBCAITrainer:
             verbose=1
         )
         
-        # Analyse des resultats
+        # Analyze results
         final_train_loss = self.training_history.history['loss'][-1]
         final_val_loss = self.training_history.history['val_loss'][-1]
         final_epochs = len(self.training_history.history['loss'])
         
-        logger.info(f"Entrainement termine apres {final_epochs} epochs")
-        logger.info(f"Loss finale - Train: {final_train_loss:.6f}, Validation: {final_val_loss:.6f}")
+        logger.info(f"Training completed after {final_epochs} epochs")
+        logger.info(f"Final loss - Train: {final_train_loss:.6f}, Validation: {final_val_loss:.6f}")
         
         return True
 
     def calculate_anomaly_thresholds(self):
-        """Calcule les seuils d'anomalie bases sur l'erreur de reconstruction"""
-        logger.info("Calcul des seuils d'anomalie...")
+        """Calculate anomaly thresholds based on reconstruction error"""
+        logger.info("Calculating anomaly thresholds...")
         
-        # Predictions sur les donnees d'entrainement
-        logger.info("Calcul des erreurs de reconstruction...")
+        # Predictions on training data
+        logger.info("Calculating reconstruction errors...")
         train_predictions = self.model.predict(self.x_train, verbose=0)
         train_errors = np.mean(np.square(self.x_train - train_predictions), axis=(1, 2))
         
-        # Calcul des statistiques
+        # Calculate statistics
         mean_error = np.mean(train_errors)
         std_error = np.std(train_errors)
         min_error = np.min(train_errors)
         max_error = np.max(train_errors)
         
-        logger.info(f"Statistiques des erreurs - Mean: {mean_error:.6f}, Std: {std_error:.6f}")
-        logger.info(f"Plage des erreurs - Min: {min_error:.6f}, Max: {max_error:.6f}")
+        logger.info(f"Error statistics - Mean: {mean_error:.6f}, Std: {std_error:.6f}")
+        logger.info(f"Error range - Min: {min_error:.6f}, Max: {max_error:.6f}")
         
-        # Calcul des seuils
+        # Calculate thresholds
         self.anomaly_thresholds = {
             "normal_threshold": float(mean_error + std_error),
             "warning_threshold": float(mean_error + 2 * std_error),
@@ -279,7 +279,7 @@ class OBCAITrainer:
             }
         }
         
-        logger.info("Seuils calcules:")
+        logger.info("Thresholds calculated:")
         logger.info(f"  NORMAL  < {self.anomaly_thresholds['normal_threshold']:.6f}")
         logger.info(f"  WARNING < {self.anomaly_thresholds['warning_threshold']:.6f}") 
         logger.info(f"  CRITICAL >= {self.anomaly_thresholds['critical_threshold']:.6f}")
@@ -287,16 +287,16 @@ class OBCAITrainer:
         return True
 
     def save_model_and_thresholds(self):
-        """Sauvegarde le modele et les seuils"""
-        logger.info("Sauvegarde du modele et des seuils...")
+        """Save the model and thresholds"""
+        logger.info("Saving the model and thresholds...")
         
         try:
-            # Sauvegarde du modele
+            # Save the model
             model_path = os.path.join(OBC_AI_DIR, "ai_model_lstm_autoencoder.h5")
             self.model.save(model_path)
-            logger.info(f"Modele sauvegarde: {model_path}")
+            logger.info(f"Model saved: {model_path}")
             
-            # Sauvegarde des seuils
+            # Save the thresholds
             thresholds_path = os.path.join(OBC_AI_DIR, "ai_thresholds.json")
             thresholds_data = {
                 "anomaly_thresholds": self.anomaly_thresholds,
@@ -310,27 +310,27 @@ class OBCAITrainer:
             
             with open(thresholds_path, 'w') as f:
                 json.dump(thresholds_data, f, indent=2)
-            logger.info(f"Seuils sauvegardes: {thresholds_path}")
+            logger.info(f"Thresholds saved: {thresholds_path}")
             
             return True
             
         except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde: {e}")
+            logger.error(f"Error saving files: {e}")
             return False
 
     def generate_training_report(self):
-        """Genere un rapport d'entrainement"""
-        logger.info("Generation du rapport d'entrainement...")
+        """Generate a training report"""
+        logger.info("Generating training report...")
         
         try:
-            # Graphiques de performance
+            # Performance graphs
             plt.figure(figsize=(15, 5))
             
             # Loss
             plt.subplot(1, 3, 1)
             plt.plot(self.training_history.history['loss'], label='Train Loss', linewidth=2)
             plt.plot(self.training_history.history['val_loss'], label='Val Loss', linewidth=2)
-            plt.title('Evolution de la Loss')
+            plt.title('Evolution of the Loss')
             plt.xlabel('Epochs')
             plt.ylabel('Loss')
             plt.legend()
@@ -340,24 +340,24 @@ class OBCAITrainer:
             plt.subplot(1, 3, 2)
             plt.plot(self.training_history.history['mae'], label='Train MAE', linewidth=2)
             plt.plot(self.training_history.history['val_mae'], label='Val MAE', linewidth=2)
-            plt.title('Evolution du MAE')
+            plt.title('Evolution of the MAE')
             plt.xlabel('Epochs')
             plt.ylabel('MAE')
             plt.legend()
             plt.grid(True, alpha=0.3)
             
-            # Distribution des erreurs
+            # Error distribution
             plt.subplot(1, 3, 3)
             train_predictions = self.model.predict(self.x_train, verbose=0)
             train_errors = np.mean(np.square(self.x_train - train_predictions), axis=(1, 2))
             
             plt.hist(train_errors, bins=50, alpha=0.7, edgecolor='black')
-            plt.axvline(self.anomaly_thresholds['normal_threshold'], color='orange', linestyle='--', label='Seuil Normal')
-            plt.axvline(self.anomaly_thresholds['warning_threshold'], color='red', linestyle='--', label='Seuil Warning')
-            plt.axvline(self.anomaly_thresholds['critical_threshold'], color='darkred', linestyle='--', label='Seuil Critical')
-            plt.title('Distribution des erreurs')
-            plt.xlabel('Erreur de reconstruction')
-            plt.ylabel('Frequence')
+            plt.axvline(self.anomaly_thresholds['normal_threshold'], color='orange', linestyle='--', label='Normal Threshold')
+            plt.axvline(self.anomaly_thresholds['warning_threshold'], color='red', linestyle='--', label='Warning Threshold')
+            plt.axvline(self.anomaly_thresholds['critical_threshold'], color='darkred', linestyle='--', label='Critical Threshold')
+            plt.title('Error Distribution')
+            plt.xlabel('Reconstruction Error')
+            plt.ylabel('Frequency')
             plt.legend()
             plt.grid(True, alpha=0.3)
             
@@ -366,57 +366,57 @@ class OBCAITrainer:
             plt.savefig(report_path, dpi=300, bbox_inches='tight')
             plt.close()
             
-            logger.info(f"Rapport d'entrainement genere: {report_path}")
+            logger.info(f"Training report generated: {report_path}")
             return True
             
         except Exception as e:
-            logger.error(f"Erreur generation rapport: {e}")
+            logger.error(f"Error generating report: {e}")
             return False
 
     def run_training_pipeline(self):
-        """Execute le pipeline complet d'entrainement"""
-        logger.info("DEMARRAGE PIPELINE D'ENTRAINEMENT OBC IA")
+        """Execute the complete training pipeline"""
+        logger.info("STARTING OBC AI TRAINING PIPELINE")
         
         try:
-            # Pipeline sequentiel avec verification
+            # Sequential pipeline with verification
             steps = [
-                ("Chargement des donnees", self.load_training_data),
-                ("Preparation des donnees", self.prepare_data),
-                ("Construction du modele", self.build_lstm_autoencoder),
-                ("Entrainement", lambda: self.train_model(epochs=50)),  # Reduit pour test
-                ("Calcul des seuils", self.calculate_anomaly_thresholds),
-                ("Sauvegarde", self.save_model_and_thresholds),
-                ("Generation rapport", self.generate_training_report)
+                ("Loading data", self.load_training_data),
+                ("Preparing data", self.prepare_data),
+                ("Building model", self.build_lstm_autoencoder),
+                ("Training", lambda: self.train_model(epochs=50)),  # Reduced for testing
+                ("Calculating thresholds", self.calculate_anomaly_thresholds),
+                ("Saving", self.save_model_and_thresholds),
+                ("Generating report", self.generate_training_report)
             ]
             
             for step_name, step_func in steps:
-                logger.info(f"ETAPE: {step_name}")
+                logger.info(f"STEP: {step_name}")
                 if not step_func():
-                    logger.error(f"Echec de l'etape: {step_name}")
+                    logger.error(f"Step failed: {step_name}")
                     return False
-                logger.info(f"ETAPE TERMINEE: {step_name}")
+                logger.info(f"STEP COMPLETED: {step_name}")
             
-            logger.info("PIPELINE D'ENTRAINEMENT TERMINE AVEC SUCCES")
+            logger.info("TRAINING PIPELINE COMPLETED SUCCESSFULLY")
             return True
             
         except Exception as e:
-            logger.error(f"ERREUR DURANT L'ENTRAINEMENT: {e}")
+            logger.error(f"ERROR DURING TRAINING: {e}")
             return False
 
 def main():
-    """Point d'entree principal"""
+    """Main entry point"""
     logger.info("=" * 60)
-    logger.info("SYSTEME D'ENTRAINEMENT IA OBC - EPS GUARDIAN")
+    logger.info("OBC AI TRAINING SYSTEM - EPS GUARDIAN")
     logger.info("=" * 60)
     
     trainer = OBCAITrainer()
     success = trainer.run_training_pipeline()
     
     if success:
-        logger.info("ENTRAINEMENT REUSSI - Le modele OBC est pret!")
+        logger.info("SUCCESSFUL TRAINING - The OBC model is ready!")
         return 0
     else:
-        logger.error("ENTRAINEMENT ECHOUE - Verifiez les donnees et les logs")
+        logger.error("FAILED TRAINING - Check the data and logs")
         return 1
 
 if __name__ == "__main__":

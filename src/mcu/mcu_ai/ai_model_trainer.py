@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Entraîneur de modèle IA pour EPS GUARDIAN
-Entraîne un autoencodeur léger sur les données normales pour détection d'anomalies
+AI model trainer for EPS GUARDIAN
+Trains a lightweight autoencoder on normal data for anomaly detection
 """
-
+#completed
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import sys
 from datetime import datetime
 
-# Désactiver les warnings TensorFlow pour une sortie plus propre
+# Disable TensorFlow warnings for a cleaner output
 tf.get_logger().setLevel('ERROR')
 
 class AIModelTrainer:
@@ -23,9 +23,9 @@ class AIModelTrainer:
         self.history = None
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         
-        # CHEMINS CORRIGÉS
+        # CORRECTED PATHS
         self.model_dir = os.path.join(self.base_dir, "data", "ai_models", "model_simple")
-        self.training_dir = os.path.join(self.base_dir, "data", "training_data")  # ← CORRIGÉ ICI
+        self.training_dir = os.path.join(self.base_dir, "data", "training_data")  # ← CORRECTED HERE
         
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.training_dir, exist_ok=True)
@@ -40,52 +40,52 @@ class AIModelTrainer:
         print(f"Training directory: {self.training_dir}")
         
     def load_training_data(self):
-        """Charge les données d'entraînement préparées"""
+        """Load prepared training data"""
         data_path = os.path.join(self.training_dir, "ai_train_data.npy")
         feature_path = os.path.join(self.training_dir, "ai_feature_names.npy")
         
-        print(f"Recherche des données: {data_path}")
+        print(f"Looking for data: {data_path}")
         
         if not os.path.exists(data_path):
-            # Lister les fichiers pour debug
+            # List files for debugging
             parent_dir = os.path.dirname(data_path)
             if os.path.exists(parent_dir):
-                print(f"Fichiers dans {parent_dir}:")
+                print(f"Files in {parent_dir}:")
                 for f in os.listdir(parent_dir):
                     print(f"   - {f}")
-            raise FileNotFoundError(f"Données d'entraînement introuvables: {data_path}")
+            raise FileNotFoundError(f"Training data not found: {data_path}")
         
-        print("Chargement des données d'entraînement...")
+        print("Loading training data...")
         X_train = np.load(data_path)
         feature_names = np.load(feature_path, allow_pickle=True)
         
-        print(f"Données chargées: {X_train.shape[0]} échantillons, {X_train.shape[1]} features")
+        print(f"Data loaded: {X_train.shape[0]} samples, {X_train.shape[1]} features")
         print(f"Features: {list(feature_names)}")
         
         return X_train, feature_names
     
     def create_autoencoder(self, input_dim):
         """
-        Crée un autoencodeur léger pour ESP32
+        Creates a lightweight autoencoder for ESP32
         Architecture: 10 → 8 → 4 → 2 → 4 → 8 → 10
         """
-        print(f" Création de l'autoencodeur (input_dim: {input_dim})")
+        print(f" Creating autoencoder (input_dim: {input_dim})")
         
         # Encoder
         encoder = keras.Sequential([
             layers.Dense(8, activation='relu', input_shape=(input_dim,)),
             layers.Dense(4, activation='relu'),
-            layers.Dense(2, activation='relu', name='bottleneck')  # Compression forte
+            layers.Dense(2, activation='relu', name='bottleneck')  # Strong compression
         ], name='encoder')
         
         # Decoder
         decoder = keras.Sequential([
             layers.Dense(4, activation='relu', input_shape=(2,)),
             layers.Dense(8, activation='relu'),
-            layers.Dense(input_dim, activation='sigmoid')  # Sigmoid car données normalisées [0,1]
+            layers.Dense(input_dim, activation='sigmoid')  # Sigmoid because normalized data [0,1]
         ], name='decoder')
         
-        # Autoencodeur complet
+        # Full Autoencoder
         autoencoder = keras.Sequential([
             encoder,
             decoder
@@ -94,28 +94,28 @@ class AIModelTrainer:
         # Compilation
         autoencoder.compile(
             optimizer=keras.optimizers.Adam(learning_rate=0.001),
-            loss='mse',  # Mean Squared Error pour reconstruction
+            loss='mse',  # Mean Squared Error for reconstruction
             metrics=['mae']
         )
         
-        # Affichage de l'architecture
+        # Display architecture
         autoencoder.summary()
         
         return autoencoder, encoder, decoder
     
     def train_model(self, X_train, validation_split=0.2, epochs=100, batch_size=32):
-        """Entraîne le modèle d'autoencodeur"""
-        print("\n Début de l'entraînement...")
-        print(f"   - Échantillons: {X_train.shape[0]}")
+        """Train the autoencoder model"""
+        print("\n Starting training...")
+        print(f"   - Samples: {X_train.shape[0]}")
         print(f"   - Features: {X_train.shape[1]}")
         print(f"   - Validation split: {validation_split}")
         print(f"   - Epochs: {epochs}")
         print(f"   - Batch size: {batch_size}")
         
-        # Création du modèle
+        # Creating the model
         self.model, self.encoder, self.decoder = self.create_autoencoder(X_train.shape[1])
         
-        # Callbacks pour un meilleur entraînement
+        # Callbacks for better training
         callbacks = [
             keras.callbacks.EarlyStopping(
                 monitor='val_loss',
@@ -132,9 +132,9 @@ class AIModelTrainer:
             )
         ]
         
-        # Entraînement
+        # Training
         self.history = self.model.fit(
-            X_train, X_train,  # Autoencodeur: input = output
+            X_train, X_train,  # Autoencoder: input = output
             epochs=epochs,
             batch_size=batch_size,
             validation_split=validation_split,
@@ -143,36 +143,36 @@ class AIModelTrainer:
             shuffle=True
         )
         
-        print("Entraînement terminé!")
+        print("Training completed!")
         return self.history
     
     def calculate_anomaly_threshold(self, X_train):
-        """Calcule le seuil d'anomalie basé sur l'erreur de reconstruction"""
-        print("\n Calcul du seuil d'anomalie...")
+        """Calculate the anomaly threshold based on reconstruction error"""
+        print("\n Calculating anomaly threshold...")
         
-        # Prédictions sur les données d'entraînement
+        # Predictions on training data
         predictions = self.model.predict(X_train, verbose=0)
         
-        # Erreur de reconstruction (MSE)
+        # Reconstruction error (MSE)
         reconstruction_errors = np.mean(np.square(X_train - predictions), axis=1)
         
-        # Statistiques des erreurs
+        # Error statistics
         mean_error = np.mean(reconstruction_errors)
         std_error = np.std(reconstruction_errors)
         
-        # Seuils basés sur la distribution normale
+        # Thresholds based on normal distribution
         self.thresholds = {
             "normal": mean_error + std_error,      # 1 sigma
             "warning": mean_error + 2 * std_error, # 2 sigma
             "critical": mean_error + 3 * std_error # 3 sigma
         }
         
-        print(f"Statistiques des erreurs de reconstruction:")
-        print(f"   - Moyenne: {mean_error:.6f}")
-        print(f"   - Écart-type: {std_error:.6f}")
+        print(f"Reconstruction error statistics:")
+        print(f"   - Mean: {mean_error:.6f}")
+        print(f"   - Standard deviation: {std_error:.6f}")
         print(f"   - Min: {np.min(reconstruction_errors):.6f}")
         print(f"   - Max: {np.max(reconstruction_errors):.6f}")
-        print(f"Seuils d'anomalie:")
+        print(f"Anomaly thresholds:")
         print(f"   - Normal: < {self.thresholds['normal']:.6f}")
         print(f"   - Warning: {self.thresholds['normal']:.6f} - {self.thresholds['warning']:.6f}")
         print(f"   - Critical: > {self.thresholds['warning']:.6f}")
@@ -180,37 +180,37 @@ class AIModelTrainer:
         return reconstruction_errors
     
     def save_model(self, feature_names):
-        """Sauvegarde le modèle et les artefacts dans le dossier dédié"""
-        print(f"Dossier modèles: {self.model_dir}")
+        """Save the model and artifacts in the dedicated folder"""
+        print(f"Model directory: {self.model_dir}")
         
-        # 1. Sauvegarde du modèle complet Keras
+        # 1. Save the complete Keras model
         model_path = os.path.join(self.model_dir, "ai_autoencoder.h5")
         self.model.save(model_path)
-        print(f"Modèle Keras sauvegardé: {model_path}")
+        print(f"Keras model saved: {model_path}")
         
-        # 2. Sauvegarde de l'encodeur (utile pour l'extraction de features)
+        # 2. Save the encoder (useful for feature extraction)
         encoder_path = os.path.join(self.model_dir, "ai_encoder.h5")
         self.encoder.save(encoder_path)
-        print(f"Encodeur sauvegardé: {encoder_path}")
+        print(f"Encoder saved: {encoder_path}")
         
-        # 3. Conversion en TensorFlow Lite
+        # 3. Conversion to TensorFlow Lite
         tflite_path = os.path.join(self.model_dir, "ai_autoencoder.tflite")
         converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
         
-        # Optimisations pour ESP32
+        # Optimizations for ESP32
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        converter.target_spec.supported_types = [tf.float16]  # Réduction précision
+        converter.target_spec.supported_types = [tf.float16]  # Precision reduction
         
         tflite_model = converter.convert()
         with open(tflite_path, 'wb') as f:
             f.write(tflite_model)
         
-        # Vérification de la taille du modèle
+        # Check model size
         model_size_kb = len(tflite_model) / 1024
-        print(f"Modèle TFLite sauvegardé: {tflite_path}")
-        print(f"Taille du modèle TFLite: {model_size_kb:.1f} KB")
+        print(f"TFLite model saved: {tflite_path}")
+        print(f"TFLite model size: {model_size_kb:.1f} KB")
         
-        # 4. Sauvegarde des seuils
+        # 4. Save thresholds
         thresholds_path = os.path.join(self.model_dir, "ai_thresholds.json")
         thresholds_data = {
             "thresholds": {k: float(v) for k, v in self.thresholds.items()},
@@ -221,9 +221,9 @@ class AIModelTrainer:
         
         with open(thresholds_path, 'w') as f:
             json.dump(thresholds_data, f, indent=2)
-        print(f"Seuils sauvegardés: {thresholds_path}")
+        print(f"Thresholds saved: {thresholds_path}")
         
-        # 5. Sauvegarde des informations du modèle
+        # 5. Save model information
         model_info_path = os.path.join(self.model_dir, "ai_model_info.json")
         model_info = {
             "model_name": "EPS_Guardian_Autoencoder",
@@ -248,31 +248,31 @@ class AIModelTrainer:
         
         with open(model_info_path, 'w') as f:
             json.dump(model_info, f, indent=2)
-        print(f"Informations modèle sauvegardées: {model_info_path}")
+        print(f"Model information saved: {model_info_path}")
         
-        # 6. Sauvegarde du résumé du modèle (CORRIGÉ)
+        # 6. Save model summary (FIXED)
         summary_path = os.path.join(self.model_dir, "ai_model_summary.txt")
         try:
-            with open(summary_path, 'w', encoding='utf-8') as f:  # ← ENCODING UTF-8 AJOUTÉ
+            with open(summary_path, 'w', encoding='utf-8') as f:  # ← ENCODING UTF-8 ADDED
                 self.model.summary(print_fn=lambda x: f.write(x + '\n'))
-            print(f"Résumé modèle sauvegardé: {summary_path}")
+            print(f"Model summary saved: {summary_path}")
         except Exception as e:
-            print(f"Note: Résumé non sauvegardé (erreur encodage: {e})")
-            # Créer un résumé simplifié
+            print(f"Note: Summary not saved (encoding error: {e})")
+            # Create a simplified summary
             with open(summary_path, 'w', encoding='utf-8') as f:
-                f.write(f"Autoencodeur EPS Guardian\n")
+                f.write(f"EPS Guardian Autoencoder\n")
                 f.write(f"Input: {self.model.input_shape[1]} features\n")
                 f.write(f"Architecture: 18 -> 8 -> 4 -> 2 -> 4 -> 8 -> 18\n")
-                f.write(f"Paramètres: {self.model.count_params()}\n")
-                f.write(f"Taille TFLite: {model_size_kb:.1f} KB\n")
-            print(f"Résumé simplifié sauvegardé: {summary_path}")
+                f.write(f"Parameters: {self.model.count_params()}\n")
+                f.write(f"TFLite size: {model_size_kb:.1f} KB\n")
+            print(f"Simplified summary saved: {summary_path}")
         
         return model_path, tflite_path
     
     def plot_training_history(self):
-        """Génère des graphiques de l'entraînement"""
+        """Generate training plots"""
         if self.history is None:
-            print("Aucun historique d'entraînement disponible")
+            print("No training history available")
             return
         
         try:
@@ -298,99 +298,99 @@ class AIModelTrainer:
             
             plt.tight_layout()
             
-            # Sauvegarde
+            # Save
             plot_path = os.path.join(self.model_dir, "ai_training_history.png")
             plt.savefig(plot_path, dpi=150, bbox_inches='tight')
             plt.close()
             
-            print(f"Graphiques d'entraînement sauvegardés: {plot_path}")
+            print(f"Training plots saved: {plot_path}")
         except Exception as e:
-            print(f"Erreur lors de la création des graphiques: {e}")
+            print(f"Error creating training plots: {e}")
     
     def evaluate_model_size(self):
-        """Évalue si le modèle est adapté pour ESP32"""
+        """Evaluate if the model is suitable for ESP32"""
         tflite_path = os.path.join(self.model_dir, "ai_autoencoder.tflite")
         
         if not os.path.exists(tflite_path):
-            print("Modèle TFLite non trouvé pour l'évaluation de taille")
+            print("TFLite model not found for size evaluation")
             return False
         
         model_size_kb = os.path.getsize(tflite_path) / 1024
-        target_size_kb = 50  # Objectif ESP32
+        target_size_kb = 50  # ESP32 target
         
-        print(f"\n ÉVALUATION TAILLE MODÈLE:")
-        print(f"   - Taille actuelle: {model_size_kb:.1f} KB")
-        print(f"   - Objectif ESP32: {target_size_kb} KB")
+        print(f"\n MODEL SIZE EVALUATION:")
+        print(f"   - Current size: {model_size_kb:.1f} KB")
+        print(f"   - ESP32 target: {target_size_kb} KB")
         
         if model_size_kb <= target_size_kb:
-            print("  MODÈLE ADAPTÉ POUR ESP32! ")
+            print("  MODEL SUITABLE FOR ESP32! ")
             return True
         else:
-            print(f" Modèle trop grand: {model_size_kb - target_size_kb:.1f} KB au-dessus de la cible")
-            print("Suggestions: Réduire l'architecture ou utiliser l'optimisation INT8")
+            print(f" Model too large: {model_size_kb - target_size_kb:.1f} KB above target")
+            print("Suggestions: Reduce architecture or use INT8 optimization")
             return False
     
     def run(self, epochs=100, batch_size=32):
-        """Exécute l'entraînement complet"""
-        print("Démarrage de l'entraînement du modèle IA")
+        """Run the complete training"""
+        print("Starting AI model training")
         print("=" * 60)
         
         try:
-            # 1. Chargement des données
+            # 1. Load data
             X_train, feature_names = self.load_training_data()
             
-            # 2. Entraînement du modèle
+            # 2. Train model
             history = self.train_model(X_train, epochs=epochs, batch_size=batch_size)
             
-            # 3. Calcul des seuils d'anomalie
+            # 3. Calculate anomaly thresholds
             reconstruction_errors = self.calculate_anomaly_threshold(X_train)
             
-            # 4. Sauvegarde des modèles
+            # 4. Save models
             model_path, tflite_path = self.save_model(feature_names)
             
-            # 5. Visualisation
+            # 5. Visualization
             self.plot_training_history()
             
-            # 6. Évaluation taille
+            # 6. Size evaluation
             esp32_compatible = self.evaluate_model_size()
             
-            print("\n Entraînement IA terminé avec succès!")
+            print("\n AI training completed successfully!")
             
-            # Rapport final
+            # Final report
             final_loss = history.history['loss'][-1]
             final_val_loss = history.history['val_loss'][-1]
             
-            print(f"\n RAPPORT FINAL:")
-            print(f"   - Loss finale: {final_loss:.6f}")
+            print(f"\n FINAL REPORT:")
+            print(f"   - Final loss: {final_loss:.6f}")
             print(f"   - Validation loss: {final_val_loss:.6f}")
-            print(f"   - Features utilisées: {len(feature_names)}")
-            print(f"   - Modèle sauvegardé dans: {self.model_dir}")
-            print(f"   - Compatible ESP32: {'OUI' if esp32_compatible else 'NON'}")
+            print(f"   - Features used: {len(feature_names)}")
+            print(f"   - Model saved in: {self.model_dir}")
+            print(f"   - ESP32 compatible: {'YES' if esp32_compatible else 'NO'}")
             
             return True
             
         except Exception as e:
-            print(f" Erreur lors de l'entraînement: {e}")
+            print(f" Error during training: {e}")
             import traceback
             traceback.print_exc()
             return False
 
 def main():
-    """Fonction principale"""
+    """Main function"""
     trainer = AIModelTrainer()
     
-    # Configuration d'entraînement (adaptable)
+    # Training configuration (adjustable)
     success = trainer.run(
-        epochs=100,        # Nombre d'époques
-        batch_size=32      # Taille de batch
+        epochs=100,        # Number of epochs
+        batch_size=32      # Batch size
     )
     
     if success:
-        print("\n L'entraînement IA est terminé avec succès!")
-        print(" Tous les fichiers sont organisés dans: data/ai_models/model_simple/")
-        print(" Vous pouvez maintenant tester l'inférence avec ai_model_inference.py")
+        print("\n AI training completed successfully!")
+        print(" All files are organized in: data/ai_models/model_simple/")
+        print(" You can now test inference with ai_model_inference.py")
     else:
-        print("\n L'entraînement IA a échoué.")
+        print("\n AI training failed.")
 
 if __name__ == "__main__":
     main()

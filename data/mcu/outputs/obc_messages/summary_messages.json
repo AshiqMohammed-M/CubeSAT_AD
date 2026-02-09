@@ -3,10 +3,10 @@
     "total_samples": 1000,
     "alerts": {
       "ALERT_CRITICAL": 1,
-      "SUMMARY": 695,
+      "SUMMARY": 759,
       "DIAGNOSTIC_SENSOR": 7,
-      "STATUS_HEARTBEAT": 297
+      "STATUS_HEARTBEAT": 233
     },
-    "timestamp": "2025-10-23T15:45:46.508873"
+    "timestamp": "2025-12-12T11:56:29.903729"
   }
 }

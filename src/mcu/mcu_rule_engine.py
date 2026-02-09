@@ -5,52 +5,52 @@ import os
 from datetime import datetime, timedelta
 from collections import deque
 from mcu_logger import MCULogger
-
+#completed
 # ======================================================
-# INTERFACE DE COMMUNICATION MCU → OBC AVEC BUFFER TEMPOREL
+# MCU → OBC COMMUNICATION INTERFACE WITH TEMPORAL BUFFER
 # ======================================================
 class OBCInterface:
     def __init__(self, window_size_seconds=30, max_data_points=100):
         self.logger = MCULogger("mcu_obc_interface.log")
         self.window_size = timedelta(seconds=window_size_seconds)
-        self.data_buffer = deque(maxlen=max_data_points)  # Mémoire circulaire
+        self.data_buffer = deque(maxlen=max_data_points)  # Circular memory
         self.message_counter = 0
         
-        # Créer le dossier de sortie pour les messages OBC
+        # Create output directory for OBC messages
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.output_dir = os.path.join(BASE_DIR, "data", "mcu", "outputs", "obc_messages")
         os.makedirs(self.output_dir, exist_ok=True)
         
-        self.logger.info(f"Interface OBC initialisée (buffer: {window_size_seconds}s)")
+        self.logger.info(f"OBC interface initialized (buffer: {window_size_seconds}s)")
     
     def add_sensor_data(self, sensor_data):
-        """Ajoute les données capteurs au buffer temporel avec timestamp"""
+        """Adds sensor data to temporal buffer with timestamp"""
         data_point = {
             "timestamp": datetime.now(),
             "data": sensor_data.copy()
         }
         self.data_buffer.append(data_point)
         
-        # Nettoyage des données trop anciennes
+        # Clean old data
         self._clean_old_data()
     
     def _clean_old_data(self):
-        """Supprime les données plus vieilles que la fenêtre temporelle"""
+        """Removes data older than the temporal window"""
         cutoff_time = datetime.now() - self.window_size
         while self.data_buffer and self.data_buffer[0]["timestamp"] < cutoff_time:
             self.data_buffer.popleft()
     
     def get_window_data(self):
-        """Retourne les données de la fenêtre temporelle (30 dernières secondes)"""
+        """Returns temporal window data (last 30 seconds)"""
         self._clean_old_data()
         return [point["data"] for point in self.data_buffer]
     
     def send_to_obc(self, message_type, payload, include_window_data=True):
-        """Envoie un message à l'OBC avec données de fenêtre optionnelles"""
+        """Sends a message to OBC with optional window data"""
         try:
             self.message_counter += 1
             
-            # Préparer le message complet
+            # Prepare complete message
             obc_message = {
                 "header": {
                     "message_id": self.message_counter,
@@ -63,64 +63,64 @@ class OBCInterface:
                 "payload": payload
             }
             
-            # Ajouter les données de fenêtre pour les SUMMARY et ALERT
+            # Add window data for SUMMARY and ALERT
             if include_window_data and message_type in ["SUMMARY", "ALERT_CRITICAL"]:
                 window_data = self.get_window_data()
                 obc_message["payload"]["temporal_window"] = {
                     "window_size_seconds": self.window_size.total_seconds(),
                     "data_points_count": len(window_data),
-                    "sensor_data": window_data[-10:]  # Derniers 10 points pour éviter overflow
+                    "sensor_data": window_data[-10:]  # Last 10 points to avoid overflow
                 }
             
-            # Sauvegarder le message dans un fichier
+            # Save message to file
             message_filename = f"obc_message_{self.message_counter:06d}_{message_type}.json"
             message_path = os.path.join(self.output_dir, message_filename)
             
             with open(message_path, 'w') as f:
                 json.dump(obc_message, f, indent=2, default=str)
             
-            # Simulation console
+            # Console simulation
             print(f"\n{'='*60}")
             print(f"📡 [OBC-TX] Message #{self.message_counter}")
-            print(f"   Type: {message_type} | Priorité: {obc_message['header']['priority']}")
+            print(f"   Type: {message_type} | Priority: {obc_message['header']['priority']}")
             print(f"   Timestamp: {obc_message['header']['timestamp']}")
-            print(f"   Fenêtre: {len(obc_message['payload'].get('temporal_window', {}).get('sensor_data', []))} points")
-            print(f"   Sauvegardé: {message_filename}")
+            print(f"   Window: {len(obc_message['payload'].get('temporal_window', {}).get('sensor_data', []))} points")
+            print(f"   Saved: {message_filename}")
             print(f"{'='*60}")
             
-            self.logger.info(f"OBC_TX [{message_type}] → {len(window_data) if include_window_data else 0} pts données")
+            self.logger.info(f"OBC_TX [{message_type}] → {len(window_data) if include_window_data else 0} data points")
             return True
             
         except Exception as e:
-            self.logger.error(f"Erreur envoi OBC: {e}")
+            self.logger.error(f"OBC send error: {e}")
             return False
 
-# Instance globale
+# Global instance
 obc_interface = OBCInterface(window_size_seconds=30)
 
 def send_to_obc(message_type, payload):
-    """Fonction legacy pour compatibilité"""
+    """Legacy function for compatibility"""
     return obc_interface.send_to_obc(message_type, payload)
 
 class MCU_RuleEngine:
     def __init__(self, window_size=30):
         self.logger = MCULogger("mcu_rule_engine.log")
         self.window_size = window_size
-        self.obc_interface = obc_interface  # Utilise l'interface globale
+        self.obc_interface = obc_interface  # Use global interface
 
-        # Buffers pour persistance des règles
+        # Buffers for rule persistence
         self.overcurrent_buffer = deque(maxlen=3)
         self.ratio_buffer = deque(maxlen=10)
         self.oscillation_buffer = deque(maxlen=10)
         self.heartbeat_counter = 0
 
-        # État système
+        # System state
         self.last_alert_time = {}
         self.alert_throttle_interval = 60
         self.system_state = "NORMAL"
         self.actions_taken = []
 
-        # Seuils
+        # Thresholds
         self.thresholds = {
             "T_batt_critical": 60.0,
             "I_batt_overcurrent": 3.0,  
@@ -132,26 +132,26 @@ class MCU_RuleEngine:
             "I_batt_sensor_max": 10.0,
         }
 
-        self.logger.info("MCU_RuleEngine initialisé avec buffer temporel 30s")
+        self.logger.info("MCU_RuleEngine initialized with 30s temporal buffer")
 
     def trigger_action(self, action_type, details=None):
-        """Déclenche une action physique et la logge"""
+        """Triggers a physical action and logs it"""
         mapping = {
-            "CUT_POWER": "Coupure d'urgence de l'alimentation",
-            "ACTIVATE_COOLING": "Activation du refroidissement", 
-            "REDUCE_LOAD": "Réduction de la charge",
-            "ISOLATE_BATTERY": "Isolation de la batterie",
-            "LED_RED": "LED rouge activée",
-            "LED_YELLOW": "LED jaune activée", 
-            "LED_GREEN": "LED verte activée",
-            "BUZZER_ALARM": "Alarme sonore activée",
-            "INCREASE_LOGGING": "Logging intensif activé"
+            "CUT_POWER": "Emergency power cut",
+            "ACTIVATE_COOLING": "Cooling activation", 
+            "REDUCE_LOAD": "Load reduction",
+            "ISOLATE_BATTERY": "Battery isolation",
+            "LED_RED": "Red LED activated",
+            "LED_YELLOW": "Yellow LED activated", 
+            "LED_GREEN": "Green LED activated",
+            "BUZZER_ALARM": "Sound alarm activated",
+            "INCREASE_LOGGING": "Intensive logging activated"
         }
         
-        msg = mapping.get(action_type, "Action inconnue")
+        msg = mapping.get(action_type, "Unknown action")
         log_msg = f"ACTION: {msg}"
         if details:
-            log_msg += f" - Détails: {details}"
+            log_msg += f" - Details: {details}"
             
         self.logger.info(log_msg)
         self.actions_taken.append({
@@ -162,7 +162,7 @@ class MCU_RuleEngine:
         return True
 
     # ======================================================
-    # RÈGLES R1-R7 (inchangées mais optimisées)
+    # RULES R1-R7 (unchanged but optimized)
     # ======================================================
     def _check_sensor_fault(self, s):
         faults = []
@@ -204,7 +204,7 @@ class MCU_RuleEngine:
         return False
 
     def _throttle_alert(self, alert_type):
-        """Anti-spam des alertes"""
+        """Anti-spam for alerts"""
         current_time = datetime.now().timestamp()
         last_time = self.last_alert_time.get(alert_type, 0)
         
@@ -215,23 +215,23 @@ class MCU_RuleEngine:
         return True
 
     # ======================================================
-    # APPLICATION DES RÈGLES AVEC TRANSMISSION OBC COMPLÈTE
+    # RULE APPLICATION WITH COMPLETE OBC TRANSMISSION
     # ======================================================
     def apply_rules(self, s):
-        """Applique les règles R1-R7 avec transmission OBC et données temporelles"""
-        # Ajouter les données au buffer temporel
+        """Applies rules R1-R7 with OBC transmission and temporal data"""
+        # Add data to temporal buffer
         self.obc_interface.add_sensor_data(s)
         
-        # Réinitialiser les actions pour ce cycle
+        # Reset actions for this cycle
         self.actions_taken = []
         actions = []
         message_type = "STATUS_OK"
         details = {"rule_triggered": None, "values": {}}
 
-        # R6: Vérification défaut capteur en premier
+        # R6: Sensor fault check first
         sensor_faults = self._check_sensor_fault(s)
         if sensor_faults:
-            self.trigger_action("LED_YELLOW", "Défaut capteur détecté")
+            self.trigger_action("LED_YELLOW", "Sensor fault detected")
             self.trigger_action("INCREASE_LOGGING", f"Faults: {sensor_faults}")
             message_type = "DIAGNOSTIC_SENSOR"
             details.update({
@@ -239,15 +239,15 @@ class MCU_RuleEngine:
                 "actions_taken": [action["action"] for action in self.actions_taken]
             })
             
-            # Envoi OBC SANS données de fenêtre (défaut instantané)
+            # Send to OBC WITHOUT window data (instantaneous fault)
             self.obc_interface.send_to_obc(message_type, details, include_window_data=False)
-            self.logger.warning(f"Défaut capteur: {sensor_faults}")
+            self.logger.warning(f"Sensor fault: {sensor_faults}")
             return actions, message_type, details
 
-        # R1: Surchauffe batterie (critique immédiat)
+        # R1: Battery overheat (immediate critical)
         if self._check_overheat(s):
             if self._throttle_alert("R1"):
-                self.trigger_action("CUT_POWER", f"Température critique: {s['T_batt']}°C")
+                self.trigger_action("CUT_POWER", f"Critical temperature: {s['T_batt']}°C")
                 self.trigger_action("LED_RED")
                 self.trigger_action("BUZZER_ALARM")
                 message_type = "ALERT_CRITICAL"
@@ -258,16 +258,16 @@ class MCU_RuleEngine:
                     "emergency_level": "HIGH"
                 })
                 
-                # Envoi OBC AVEC données de fenêtre
+                # Send to OBC WITH window data
                 self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
-                self.logger.critical(f"R1 - Surchauffe batterie: {s['T_batt']}°C")
+                self.logger.critical(f"R1 - Battery overheat: {s['T_batt']}°C")
                 self.system_state = "CRITICAL"
                 return actions, message_type, details
 
-        # R3: Décharge profonde (critique immédiat)
+        # R3: Deep discharge (immediate critical)
         if self._check_deep_discharge(s):
             if self._throttle_alert("R3"):
-                self.trigger_action("ISOLATE_BATTERY", f"Tension basse: {s['V_batt']}V")
+                self.trigger_action("ISOLATE_BATTERY", f"Low voltage: {s['V_batt']}V")
                 self.trigger_action("LED_RED")
                 self.trigger_action("BUZZER_ALARM")
                 message_type = "ALERT_CRITICAL"
@@ -280,14 +280,14 @@ class MCU_RuleEngine:
                 })
                 
                 self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
-                self.logger.critical(f"R3 - Décharge profonde: V={s['V_batt']}V")
+                self.logger.critical(f"R3 - Deep discharge: V={s['V_batt']}V")
                 self.system_state = "CRITICAL"
                 return actions, message_type, details
 
-        # R2: Surcharge courant (persistance 3s)
+        # R2: Overcurrent (3s persistence)
         if self._check_overcurrent(s):
             if self._throttle_alert("R2"):
-                self.trigger_action("REDUCE_LOAD", f"Courant élevé: {s['I_batt']}A")
+                self.trigger_action("REDUCE_LOAD", f"High current: {s['I_batt']}A")
                 self.trigger_action("LED_RED")
                 message_type = "ALERT_CRITICAL"
                 details.update({
@@ -298,14 +298,14 @@ class MCU_RuleEngine:
                 })
                 
                 self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
-                self.logger.critical(f"R2 - Surcharge courant: {s['I_batt']}A")
+                self.logger.critical(f"R2 - Overcurrent: {s['I_batt']}A")
                 self.system_state = "CRITICAL"
                 return actions, message_type, details
 
-        # R4: Ratio DC/DC anormal
+        # R4: Abnormal DC/DC ratio
         if self._check_dcdc_ratio(s):
             ratio_value = s["V_bus"] / s["V_solar"] if s["V_solar"] > 0.1 else 0
-            self.trigger_action("REDUCE_LOAD", f"Ratio anormal: {ratio_value:.2f}")
+            self.trigger_action("REDUCE_LOAD", f"Abnormal ratio: {ratio_value:.2f}")
             self.trigger_action("LED_YELLOW")
             message_type = "SUMMARY"
             details.update({
@@ -316,11 +316,11 @@ class MCU_RuleEngine:
             })
             
             self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
-            self.logger.warning(f"R4 - Ratio DC/DC anormal: {ratio_value:.2f}")
+            self.logger.warning(f"R4 - Abnormal DC/DC ratio: {ratio_value:.2f}")
 
-        # R5: Oscillation bus
+        # R5: Bus oscillation
         elif self._check_oscillation(s):
-            self.trigger_action("INCREASE_LOGGING", "Oscillation détectée")
+            self.trigger_action("INCREASE_LOGGING", "Oscillation detected")
             self.trigger_action("LED_YELLOW")
             message_type = "SUMMARY"
             details.update({
@@ -330,15 +330,15 @@ class MCU_RuleEngine:
             })
             
             self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
-            self.logger.warning("R5 - Oscillation bus détectée")
+            self.logger.warning("R5 - Bus oscillation detected")
 
-        # R7: État normal + heartbeat périodique
+        # R7: Normal state + periodic heartbeat
         else:
-            self.trigger_action("LED_GREEN", "Système nominal")
+            self.trigger_action("LED_GREEN", "Nominal system")
             message_type = "STATUS_HEARTBEAT"
             details.update({"rule_triggered": "R7"})
             
-            # Heartbeat toutes les 10 cycles (sans données de fenêtre)
+            # Heartbeat every 10 cycles (without window data)
             self.heartbeat_counter += 1
             if self.heartbeat_counter % 10 == 0:
                 self.obc_interface.send_to_obc("STATUS_HEARTBEAT", {

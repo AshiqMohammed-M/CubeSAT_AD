@@ -8,8 +8,8 @@ import os
 import sys
 from datetime import datetime
 
-# === CONFIGURATION CORRIGÉE DES CHEMINS ===
-BASE_DIR = r"D:\Challenge AESS&IES"
+# === CORRECTED PATH CONFIGURATION ===
+BASE_DIR = r"D:\final_year_project\Cubesat_AD"
 DATA_DIR = os.path.join(BASE_DIR, "data")
 ANALYSE_DIR = os.path.join(DATA_DIR, "analyse")
 VISUALIZATIONS_DIR = os.path.join(ANALYSE_DIR, "visualizations")
@@ -17,26 +17,26 @@ DATASET_DIR = os.path.join(DATA_DIR, "dataset")
 DATA_TRAIN_DIR = os.path.join(DATA_DIR, "data_train")
 LOGS_DIR = os.path.join(DATA_DIR, "logs")
 
-# SUPPRIMER os.makedirs(LOGS_DIR, exist_ok=True)
+# REMOVE os.makedirs(LOGS_DIR, exist_ok=True)
 
-# Configuration des plots
+# plot configuration
 plt.style.use('default')
 sns.set_palette("husl")
 plt.rcParams['figure.figsize'] = [12, 8]
 plt.rcParams['font.size'] = 10
 
-# Configuration du logging - UNIQUEMENT CONSOLE
+# Logging configuration - CONSOLE ONLY
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]  # SUPPRIMER FileHandler
+    handlers=[logging.StreamHandler(sys.stdout)]  # REMOVE FileHandler
 )
 
 logger = logging.getLogger(__name__)
 
 class ProEPSAnalyzer:
     
-    """Analyseur pour donnees EPS avec verifications de coherence physique"""
+    """Analyzer for EPS data with physical consistency checks"""
     
     def __init__(self):
         self.expected_cols = [
@@ -44,15 +44,15 @@ class ProEPSAnalyzer:
             'V_bus', 'I_bus', 'T_eps', 'SOC', 'anomaly_type', 'orbit_sunlight'
         ]
         
-        # Configuration des chemins CORRIGÉE
+        # CORRECTED path configuration
         self.data_dir = DATASET_DIR
         self.output_dir = VISUALIZATIONS_DIR
         self.logs_dir = LOGS_DIR
         
-        # Couleurs pour les visualisations
+        # Colors for visualizations
         self.colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#3F7CAC']
         
-        # Limites physiques
+        # Physical limits
         self.physical_limits = {
             'V_batt': (5.5, 8.6),
             'I_batt': (-3.0, 3.0),
@@ -65,64 +65,64 @@ class ProEPSAnalyzer:
             'P_solar': (0, 40)
         }
         
-        # Types d'anomalies critiques
+        # Critical anomaly types
         self.critical_anomalies = ['batt_overheat', 'batt_undervoltage', 'batt_overcurrent']
         
-        logger.info("Analyseur EPS initialise")
+        logger.info("EPS analyzer initialized")
 
     def check_physical_consistency(self, df):
-        """Verifie la coherence physique du dataset"""
-        logger.info("Verification coherence physique...")
+        """Verify the physical consistency of the dataset"""
+        logger.info("Verifying physical consistency...")
         
         checks_passed = True
         physical_issues = []
         
-        print("\nVerification coherence physique:")
+        print("\nPhysical consistency verification:")
         
-        # 1. Verification des limites physiques
+        # 1. Verification of physical limits
         for param, (min_val, max_val) in self.physical_limits.items():
             if param in df.columns:
                 valid_data = df[param].dropna()
                 if len(valid_data) > 0:
                     out_of_bounds = valid_data[(valid_data < min_val) | (valid_data > max_val)]
                     if len(out_of_bounds) > 0:
-                        physical_issues.append(f"{param}: {len(out_of_bounds)} valeurs hors limites")
+                        physical_issues.append(f"{param}: {len(out_of_bounds)} values out of bounds")
                         checks_passed = False
         
-        # 2. Verification coherence I_bus > 0
+        # 2. Verification that I_bus > 0
         if 'I_bus' in df.columns:
             negative_I_bus = df[df['I_bus'] < 0]
             if len(negative_I_bus) > 0:
-                physical_issues.append(f"I_bus: {len(negative_I_bus)} valeurs negatives")
+                physical_issues.append(f"I_bus: {len(negative_I_bus)} negative values")
                 checks_passed = False
         
-        # Rapport final
+        # Final report
         if checks_passed and not physical_issues:
-            print("   Coherence physique validee")
+            print("   Physical consistency validated")
         else:
-            print("   Problemes detectes:")
+            print("   Issues detected:")
             for issue in physical_issues:
                 print(f"   - {issue}")
         
         return checks_passed
 
     def check_dataset_integrity(self, df):
-        """Verifie l'integrite du dataset"""
-        logger.info("Verification integrite dataset...")
+        """Verifies dataset integrity"""
+        logger.info("Checking dataset integrity...")
         
         checks_passed = True
         
-        print("\nVerification integrite dataset:")
+        print("\nDataset integrity check:")
         
-        # 1. Colonnes manquantes
+        # 1. Missing columns
         missing_cols = [col for col in self.expected_cols if col not in df.columns]
         if missing_cols:
-            print(f"   Colonnes manquantes: {missing_cols}")
+            print(f"   Missing columns: {missing_cols}")
             checks_passed = False
         else:
-            print("   Toutes les colonnes presentes")
+            print("   All columns present")
         
-        # 2. Donnees manquantes
+        # 2. Missing data
         sensor_cols = [col for col in self.expected_cols if col not in ['timestamp', 'anomaly_type', 'orbit_sunlight']]
         nan_summary = df[sensor_cols].isna().sum()
         
@@ -137,7 +137,7 @@ class ProEPSAnalyzer:
         else:
             print("   Aucune valeur manquante")
         
-        # 3. Verification coherence physique
+        # 3. Physical consistency check
         physical_ok = self.check_physical_consistency(df)
         if not physical_ok:
             checks_passed = False
@@ -146,67 +146,67 @@ class ProEPSAnalyzer:
         anomaly_stats = df['anomaly_type'].value_counts()
         total_samples = len(df)
         
-        print(f"\nDistribution donnees:")
+        print(f"\ndata distribution:")
         for anomaly_type, count in anomaly_stats.items():
             percentage = (count / total_samples) * 100
-            status = "CRITIQUE" if anomaly_type in self.critical_anomalies else "NORMAL" if anomaly_type == 'normal' else "ANOMALIE"
+            status = "CRITICAL" if anomaly_type in self.critical_anomalies else "NORMAL" if anomaly_type == 'normal' else "ANOMALY"
             print(f"   {status} {anomaly_type}: {count} ({percentage:.1f}%)")
         
         return checks_passed
 
     def analyze_dataset(self, filename="pro_eps_dataset.csv"):
-        """Analyse complete du dataset avec visualisations"""
-        logger.info("Debut analyse dataset...")
+        """Complete dataset analysis with visualizations"""
+        logger.info("Starting dataset analysis...")
         
         file_path = os.path.join(self.data_dir, filename)
         
         try:
             df = pd.read_csv(file_path, parse_dates=['timestamp'])
             df['timestamp'] = pd.to_datetime(df['timestamp'])
-            print(f"Dataset charge: {len(df)} echantillons")
-            logger.info(f"Dataset charge: {len(df)} echantillons")
+            print(f"Dataset loaded: {len(df)} samples")
+            logger.info(f"Dataset loaded: {len(df)} samples")
         except FileNotFoundError:
-            print(f"Fichier non trouve: {file_path}")
-            print(f"Verifiez que le fichier existe dans: {self.data_dir}")
+            print(f"File not found: {file_path}")
+            print(f"Verify that the file exists in: {self.data_dir}")
             return
         except Exception as e:
-            print(f"Erreur chargement: {e}")
+            print(f"Loading error: {e}")
             return
         
-        # Verification integrite
+        # Integrity verification
         self.check_dataset_integrity(df)
         
-        # Analyse statistique
+        # Statistical analysis
         self._generate_statistical_analysis(df)
         
-        # Visualisations
+        # Visualizations
         self._create_comprehensive_plots(df)
         
-        # Resume pour OBC
+        # OBC summary
         self._export_obc_summary(df)
         
-        # Generation rapport Excel
+        # Excel report generation
         self._generate_excel_report(df)
         
-        print("Analyse terminee avec succes!")
-        logger.info("Analyse terminee avec succes")
+        print("Analysis completed successfully!")
+        logger.info("Analysis completed successfully")
 
     def _generate_statistical_analysis(self, df):
-        """Genere l'analyse statistique"""
+        """Generates statistical analysis"""
         print("\n" + "="*60)
-        print("ANALYSE STATISTIQUE")
+        print("STATISTICAL ANALYSIS")
         print("="*60)
         
         sensor_cols = ['V_batt', 'I_batt', 'T_batt', 'V_solar', 'I_solar', 'V_bus', 'I_bus', 'T_eps', 'SOC']
         sensor_cols = [col for col in sensor_cols if col in df.columns]
         
-        # Statistiques descriptives
-        print("\nStatistiques descriptives:")
+        # Descriptive statistics
+        print("\nDescriptive statistics:")
         stats = df[sensor_cols].describe()
         print(stats.round(3))
         
-        # Verification des limites
-        print("\nVerification limites:")
+        # Limit verification
+        print("\nLimit verification:")
         limits_check = {
             'V_batt': (5.5, 8.6),
             'I_batt': (-3.0, 3.0),
@@ -217,51 +217,51 @@ class ProEPSAnalyzer:
             if param in df.columns:
                 data_min = df[param].min()
                 data_max = df[param].max()
-                status = "OK" if min_val <= data_min <= data_max <= max_val else "ERREUR"
-                print(f"   {status} {param}: {data_min:.2f} a {data_max:.2f}")
+                status = "OK" if min_val <= data_min <= data_max <= max_val else "ERROR"
+                print(f"   {status} {param}: {data_min:.2f} to {data_max:.2f}")
         
-        # Analyse des anomalies
-        print("\nRepartition anomalies:")
+        # Anomaly analysis
+        print("\nAnomaly distribution:")
         anomaly_stats = df['anomaly_type'].value_counts()
         
         for anomaly_type, count in anomaly_stats.items():
             percentage = (count / len(df)) * 100
-            status = "[CRITIQUE]" if anomaly_type in self.critical_anomalies else "[NORMAL]" if anomaly_type == 'normal' else "[ANOMALIE]"
+            status = "[CRITICAL]" if anomaly_type in self.critical_anomalies else "[NORMAL]" if anomaly_type == 'normal' else "[ANOMALY]"
             print(f"  {status} {anomaly_type}: {count} ({percentage:.1f}%)")
 
     def _create_comprehensive_plots(self, df):
-        """Cree toutes les visualisations d'analyse"""
-        logger.info("Creation visualisations...")
+        """Creates all analysis visualizations"""
+        logger.info("Creating visualizations...")
         
         try:
-            # 1. Dashboard principal
+            # 1. Main dashboard
             self._create_main_dashboard(df)
             
-            # 2. Series temporelles detaillees
+            # 2. Detailed time series
             self._create_detailed_timeseries(df)
             
-            # 3. Analyse des anomalies
+            # 3. Anomaly analysis
             self._create_anomaly_analysis(df)
             
-            # 4. Distribution des parametres
+            # 4. Parameter distribution
             self._create_distribution_plots(df)
             
-            logger.info("Visualisations creees avec succes")
+            logger.info("Visualizations created successfully")
             
         except Exception as e:
-            logger.error(f"Erreur creation visualisations: {e}")
-            print(f"Erreur creation graphiques: {e}")
+            logger.error(f"Visualization creation error: {e}")
+            print(f"Graph creation error: {e}")
 
     def _create_main_dashboard(self, df):
-        """Cree le dashboard principal"""
+        """Creates the main dashboard"""
         fig, axes = plt.subplots(2, 2, figsize=(18, 14))
-        fig.suptitle('DASHBOARD EPS GUARDIAN - ANALYSE SYSTEME', 
+        fig.suptitle('EPS GUARDIAN DASHBOARD - SYSTEM ANALYSIS', 
                     fontsize=18, fontweight='bold', y=0.98)
         
-        # 1. Camembert - Repartition des donnees
+        # 1. Pie chart - Data distribution
         anomaly_counts = df['anomaly_type'].value_counts()
         
-        # Grouper les petites categories
+        # Group small categories
         threshold = 0.02
         total_samples = len(df)
         main_categories = {}
@@ -295,15 +295,15 @@ class ProEPSAnalyzer:
         axes[0, 0].legend(
             wedges, 
             [f'{label} ({count})' for label, count in main_categories.items()],
-            title="Types de donnees",
+            title="Data types",
             loc="center left",
             bbox_to_anchor=(1, 0, 0.5, 1),
             fontsize=9
         )
         
-        axes[0, 0].set_title('Repartition des Types de Donnees', fontweight='bold', fontsize=12)
+        axes[0, 0].set_title('Distribution of Data Types', fontweight='bold', fontsize=12)
         
-        # 2. Bar chart - Repartition anomalies
+        # 2. Bar chart - Distribution of anomalies
         anomalies_only = df[df['anomaly_type'] != 'normal']['anomaly_type'].value_counts()
         
         if len(anomalies_only) > 0:
@@ -318,7 +318,7 @@ class ProEPSAnalyzer:
                     other_anomalies[anomaly_type] = count
             
             if other_anomalies:
-                main_anomalies['Autres anomalies'] = sum(other_anomalies.values())
+                main_anomalies['Other anomalies'] = sum(other_anomalies.values())
             
             x_pos = np.arange(len(main_anomalies))
             bars = axes[0, 1].bar(x_pos, list(main_anomalies.values()), 
@@ -327,10 +327,10 @@ class ProEPSAnalyzer:
                                  edgecolor='grey',
                                  linewidth=0.5)
             
-            axes[0, 1].set_title('Distribution des Anomalies', fontweight='bold', fontsize=12)
+            axes[0, 1].set_title('Distribution of Anomalies', fontweight='bold', fontsize=12)
             axes[0, 1].set_xticks(x_pos)
             axes[0, 1].set_xticklabels(list(main_anomalies.keys()), rotation=45, ha='right', fontsize=9)
-            axes[0, 1].set_ylabel('Nombre d\'echantillons', fontsize=10)
+            axes[0, 1].set_ylabel('Number of samples', fontsize=10)
             
             for bar in bars:
                 height = bar.get_height()
@@ -342,12 +342,12 @@ class ProEPSAnalyzer:
             axes[0, 1].set_ylim(0, max(main_anomalies.values()) * 1.15)
             
         else:
-            axes[0, 1].text(0.5, 0.5, 'Aucune anomalie detectee', 
+            axes[0, 1].text(0.5, 0.5, 'No anomalies detected', 
                            ha='center', va='center', transform=axes[0, 1].transAxes,
                            fontsize=12, fontweight='bold', style='italic')
-            axes[0, 1].set_title('Distribution des Anomalies', fontweight='bold', fontsize=12)
+            axes[0, 1].set_title('Distribution of Anomalies', fontweight='bold', fontsize=12)
         
-        # 3. Matrice de correlation
+        # 3. Correlation matrix
         sensor_cols = ['V_batt', 'I_batt', 'T_batt', 'V_solar', 'I_solar', 'V_bus', 'I_bus', 'T_eps', 'SOC']
         sensor_cols = [col for col in sensor_cols if col in df.columns]
         corr_matrix = df[sensor_cols].corr()
@@ -358,7 +358,7 @@ class ProEPSAnalyzer:
         axes[1, 0].set_yticks(range(len(sensor_cols)))
         axes[1, 0].set_xticklabels(sensor_cols, rotation=45, ha='right', fontsize=9)
         axes[1, 0].set_yticklabels(sensor_cols, fontsize=9)
-        axes[1, 0].set_title('Matrice de Correlation', fontweight='bold', fontsize=12)
+        axes[1, 0].set_title('Correlation Matrix', fontweight='bold', fontsize=12)
         
         for i in range(len(sensor_cols)):
             for j in range(len(sensor_cols)):
@@ -369,9 +369,9 @@ class ProEPSAnalyzer:
                                color=color, fontsize=8, fontweight=fontweight)
         
         cbar = plt.colorbar(im, ax=axes[1, 0], shrink=0.8)
-        cbar.set_label('Coefficient de correlation', fontsize=10)
+        cbar.set_label('Correlation Coefficient', fontsize=10)
         
-        # 4. Vue temporelle
+        # 4. Temporal view
         sample_df = df.iloc[::max(1, len(df)//200)].copy() 
         
         if len(sample_df) > 10:
@@ -392,9 +392,9 @@ class ProEPSAnalyzer:
                                        zorder=5, edgecolors='darkred', linewidth=0.5)
         
         axes[1, 1].legend(fontsize=9, loc='upper right')
-        axes[1, 1].set_title('Evolution Temporelle - V_batt et T_batt', fontweight='bold', fontsize=12)
-        axes[1, 1].set_xlabel('Temps', fontweight='bold', fontsize=10)
-        axes[1, 1].set_ylabel('Valeurs', fontweight='bold', fontsize=10)
+        axes[1, 1].set_title('Temporal Evolution - V_batt and T_batt', fontweight='bold', fontsize=12)
+        axes[1, 1].set_xlabel('Time', fontweight='bold', fontsize=10)
+        axes[1, 1].set_ylabel('Values', fontweight='bold', fontsize=10)
         axes[1, 1].tick_params(axis='x', rotation=45)
         axes[1, 1].grid(True, alpha=0.3)
         
@@ -405,26 +405,26 @@ class ProEPSAnalyzer:
         plt.show()
 
     def _create_detailed_timeseries(self, df):
-        """Cree les series temporelles detaillees"""
+        """Creates detailed time series"""
         fig, axes = plt.subplots(3, 1, figsize=(14, 12))
-        fig.suptitle('ANALYSE TEMPORELLE DETAILLEE - SYSTEME EPS', 
+        fig.suptitle('DETAILED TEMPORAL ANALYSIS - EPS SYSTEM', 
                     fontsize=14, fontweight='bold')
         
         sample_df = df.iloc[::max(1, len(df)//500)]
         
-        # 1. Batterie - Tension et Courant
+        # 1. Battery - Voltage and Current
         axes[0].plot(sample_df['timestamp'], sample_df['V_batt'], label='V_batt (V)', 
                     color='blue', linewidth=1.5)
-        axes[0].set_ylabel('Tension (V)', color='blue', fontweight='bold')
+        axes[0].set_ylabel('Voltage (V)', color='blue', fontweight='bold')
         axes[0].tick_params(axis='y', labelcolor='blue')
         axes[0].grid(True, alpha=0.3)
         
         ax2 = axes[0].twinx()
         ax2.plot(sample_df['timestamp'], sample_df['I_batt'], label='I_batt (A)', 
                 color='red', linewidth=1, alpha=0.8)
-        ax2.set_ylabel('Courant (A)', color='red', fontweight='bold')
+        ax2.set_ylabel('Current (A)', color='red', fontweight='bold')
         ax2.tick_params(axis='y', labelcolor='red')
-        axes[0].set_title('Batterie: Tension et Courant', fontweight='bold')
+        axes[0].set_title('Battery: Voltage and Current', fontweight='bold')
         
         # 2. Temperatures
         axes[1].plot(sample_df['timestamp'], sample_df['T_batt'], label='T_batt', 
@@ -432,26 +432,26 @@ class ProEPSAnalyzer:
         axes[1].plot(sample_df['timestamp'], sample_df['T_eps'], label='T_eps', 
                     linewidth=1.5, color='green', alpha=0.8)
         axes[1].set_ylabel('Temperature (°C)', fontweight='bold')
-        axes[1].set_title('Temperatures du Systeme', fontweight='bold')
+        axes[1].set_title('System Temperatures', fontweight='bold')
         axes[1].legend()
         axes[1].grid(True, alpha=0.3)
         
-        # 3. Puissances
+        # 3. Powers
         if all(col in sample_df.columns for col in ['V_solar', 'I_solar', 'V_batt', 'I_batt', 'V_bus', 'I_bus']):
             axes[2].plot(sample_df['timestamp'], sample_df['V_solar'] * sample_df['I_solar'], 
-                        label='P_solaire', linewidth=1.5, color='yellow')
+                        label='P_solar', linewidth=1.5, color='yellow')
             axes[2].plot(sample_df['timestamp'], sample_df['V_batt'] * sample_df['I_batt'], 
-                        label='P_batterie', linewidth=1.5, color='purple', alpha=0.8)
+                        label='P_battery', linewidth=1.5, color='purple', alpha=0.8)
             axes[2].plot(sample_df['timestamp'], sample_df['V_bus'] * sample_df['I_bus'], 
                         label='P_bus', linewidth=1.5, color='brown', alpha=0.8)
-            axes[2].set_ylabel('Puissance (W)', fontweight='bold')
-            axes[2].set_title('Bilan Energetique', fontweight='bold')
+            axes[2].set_ylabel('Power (W)', fontweight='bold')
+            axes[2].set_title('Energy Balance', fontweight='bold')
             axes[2].legend()
             axes[2].grid(True, alpha=0.3)
         
-        axes[2].set_xlabel('Temps', fontweight='bold')
+        axes[2].set_xlabel('Time', fontweight='bold')
         
-        # Marquage des anomalies
+        # Marking anomalies
         anomalies = df[df['anomaly_type'] != 'normal']
         if len(anomalies) > 0:
             sample_anomalies = anomalies.iloc[::max(1, len(anomalies)//100)]
@@ -465,65 +465,65 @@ class ProEPSAnalyzer:
         plt.show()
 
     def _create_anomaly_analysis(self, df):
-        """Analyse specifique des anomalies"""
+        """Specific anomaly analysis"""
         anomalies_df = df[df['anomaly_type'] != 'normal']
         
         if len(anomalies_df) == 0:
-            print("Aucune anomalie a analyser")
+            print("No anomalies to analyze")
             return
         
         critical_anomalies_df = anomalies_df[anomalies_df['anomaly_type'].isin(self.critical_anomalies)]
         
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle('ANALYSE DETAILLEE DES ANOMALIES', fontsize=16, fontweight='bold')
+        fig.suptitle('DETAILED ANOMALY ANALYSIS', fontsize=16, fontweight='bold')
         
-        # 1. Distribution par type
+        # 1. Distribution by type
         anomaly_counts = anomalies_df['anomaly_type'].value_counts()
         bars = axes[0, 0].bar(anomaly_counts.index, anomaly_counts.values, color=self.colors)
-        axes[0, 0].set_title('Distribution des Types d\'Anomalies', fontweight='bold')
+        axes[0, 0].set_title('Anomaly Type Distribution', fontweight='bold')
         axes[0, 0].tick_params(axis='x', rotation=45)
         for bar in bars:
             height = bar.get_height()
             axes[0, 0].text(bar.get_x() + bar.get_width()/2., height,
                            f'{int(height)}', ha='center', va='bottom', fontweight='bold')
         
-        # 2. Impact sur V_batt
+        # 2. Impact on V_batt
         if len(critical_anomalies_df) > 0:
             for anomaly_type in critical_anomalies_df['anomaly_type'].unique():
                 subset = critical_anomalies_df[critical_anomalies_df['anomaly_type'] == anomaly_type]
                 axes[0, 1].scatter(subset['timestamp'], subset['V_batt'], 
                                   label=anomaly_type, alpha=0.7, s=50)
-            axes[0, 1].set_title('Impact Anomalies CRITIQUES sur Tension Batterie', fontweight='bold')
+            axes[0, 1].set_title('Impact of Critical Anomalies on Battery Voltage', fontweight='bold')
         else:
             for anomaly_type in anomalies_df['anomaly_type'].unique():
                 subset = anomalies_df[anomalies_df['anomaly_type'] == anomaly_type]
                 axes[0, 1].scatter(subset['timestamp'], subset['V_batt'], 
                                   label=anomaly_type, alpha=0.7, s=50)
-            axes[0, 1].set_title('Impact sur Tension Batterie', fontweight='bold')
+            axes[0, 1].set_title('Impact on Battery Voltage', fontweight='bold')
         
         axes[0, 1].legend()
         axes[0, 1].tick_params(axis='x', rotation=45)
         axes[0, 1].set_ylabel('V_batt (V)')
         
-        # 3. Impact sur T_batt
+        # 3. Impact on T_batt
         if len(critical_anomalies_df) > 0:
             for anomaly_type in critical_anomalies_df['anomaly_type'].unique():
                 subset = critical_anomalies_df[critical_anomalies_df['anomaly_type'] == anomaly_type]
                 axes[1, 0].scatter(subset['timestamp'], subset['T_batt'], 
                                   label=anomaly_type, alpha=0.7, s=50)
-            axes[1, 0].set_title('Impact Anomalies CRITIQUES sur Temperature Batterie', fontweight='bold')
+            axes[1, 0].set_title('Impact of Critical Anomalies on Battery Temperature', fontweight='bold')
         else:
             for anomaly_type in anomalies_df['anomaly_type'].unique():
                 subset = anomalies_df[anomalies_df['anomaly_type'] == anomaly_type]
                 axes[1, 0].scatter(subset['timestamp'], subset['T_batt'], 
                                   label=anomaly_type, alpha=0.7, s=50)
-            axes[1, 0].set_title('Impact sur Temperature Batterie', fontweight='bold')
+            axes[1, 0].set_title('Impact on Battery Temperature', fontweight='bold')
         
         axes[1, 0].legend()
         axes[1, 0].tick_params(axis='x', rotation=45)
         axes[1, 0].set_ylabel('T_batt (°C)')
         
-        # 4. Correlation anomalies critiques
+        # 4. Correlation critical anomalies
         critical_params = ['V_batt', 'I_batt', 'T_batt']
         if len(critical_anomalies_df) > 0 and all(param in critical_anomalies_df.columns for param in critical_params):
             anomaly_corr = critical_anomalies_df[critical_params].corr()
@@ -532,7 +532,7 @@ class ProEPSAnalyzer:
             axes[1, 1].set_yticks(range(len(critical_params)))
             axes[1, 1].set_xticklabels(critical_params)
             axes[1, 1].set_yticklabels(critical_params)
-            axes[1, 1].set_title('Correlations Anomalies CRITIQUES', fontweight='bold')
+            axes[1, 1].set_title('Correlations of Critical Anomalies', fontweight='bold')
             
             for i in range(len(critical_params)):
                 for j in range(len(critical_params)):
@@ -542,9 +542,9 @@ class ProEPSAnalyzer:
             
             plt.colorbar(im, ax=axes[1, 1])
         else:
-            axes[1, 1].text(0.5, 0.5, 'Donnees insuffisantes\npour correlation', 
+            axes[1, 1].text(0.5, 0.5, 'Insufficient data\nfor correlation', 
                            ha='center', va='center', transform=axes[1, 1].transAxes)
-            axes[1, 1].set_title('Correlations Anomalies', fontweight='bold')
+            axes[1, 1].set_title('Correlations of Anomalies', fontweight='bold')
         
         plt.tight_layout()
         plt.savefig(os.path.join(self.output_dir, 'eps_anomaly_analysis_realistic.png'), 
@@ -552,12 +552,12 @@ class ProEPSAnalyzer:
         plt.show()
 
     def _create_distribution_plots(self, df):
-        """Cree les plots de distribution des parametres"""
+        """Creates parameter distribution plots"""
         sensor_cols = ['V_batt', 'I_batt', 'T_batt', 'V_solar', 'SOC']
         sensor_cols = [col for col in sensor_cols if col in df.columns]
         
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        fig.suptitle('DISTRIBUTION DES PARAMETRES EPS', fontsize=16, fontweight='bold')
+        fig.suptitle('EPS PARAMETER DISTRIBUTION', fontsize=16, fontweight='bold')
         
         axes = axes.flatten()
         
@@ -568,11 +568,11 @@ class ProEPSAnalyzer:
                 
                 axes[i].hist(normal_data, bins=30, alpha=0.7, label='Normal', color='green')
                 if len(anomaly_data) > 0:
-                    axes[i].hist(anomaly_data, bins=30, alpha=0.7, label='Anomalie', color='red')
+                    axes[i].hist(anomaly_data, bins=30, alpha=0.7, label='Anomaly', color='red')
                 
                 axes[i].set_title(f'Distribution {col}', fontweight='bold')
                 axes[i].set_xlabel(col)
-                axes[i].set_ylabel('Frequence')
+                axes[i].set_ylabel('Frequency')
                 axes[i].legend()
                 axes[i].grid(True, alpha=0.3)
         
@@ -586,23 +586,23 @@ class ProEPSAnalyzer:
         plt.show()
 
     def _generate_excel_report(self, df):
-        """Genere un rapport Excel complet"""
+        """Generates a complete Excel report"""
         try:
-            logger.info("Generation rapport Excel...")
+            logger.info("Generating Excel report...")
             
-            # Creation d'un DataFrame de resume
+            # Create summary DataFrame
             summary_data = {
                 'Metric': [
-                    'Total Echantillons',
-                    'Echantillons Normaux', 
-                    'Echantillons Anormaux',
-                    'Anomalies Critiques',
-                    'Score Sante Batterie',
-                    'Score Stabilite Systeme',
-                    'Score Efficacite Solaire',
-                    'Score Coherence Physique'
+                    'Total Samples',
+                    'Normal Samples', 
+                    'Abnormal Samples',
+                    'Critical Anomalies',
+                    'Battery Health Score',
+                    'System Stability Score',
+                    'Solar Efficiency Score',
+                    'Physical Consistency Score'
                 ],
-                'Valeur': [
+                'Value': [
                     len(df),
                     len(df[df['anomaly_type'] == 'normal']),
                     len(df[df['anomaly_type'] != 'normal']),
@@ -616,42 +616,42 @@ class ProEPSAnalyzer:
             
             summary_df = pd.DataFrame(summary_data)
             
-            # Statistiques descriptives
+            # Descriptive statistics
             sensor_cols = ['V_batt', 'I_batt', 'T_batt', 'V_solar', 'I_solar', 'V_bus', 'I_bus', 'T_eps', 'SOC']
             sensor_cols = [col for col in sensor_cols if col in df.columns]
             stats_df = df[sensor_cols].describe()
             
-            # Distribution des anomalies
+            # Anomaly distribution
             anomaly_dist_df = pd.DataFrame(df['anomaly_type'].value_counts()).reset_index()
-            anomaly_dist_df.columns = ['Type_Anomalie', 'Nombre']
-            anomaly_dist_df['Pourcentage'] = (anomaly_dist_df['Nombre'] / len(df) * 100).round(2)
+            anomaly_dist_df.columns = ['Anomaly_Type', 'Count']
+            anomaly_dist_df['Percentage'] = (anomaly_dist_df['Count'] / len(df) * 100).round(2)
             
-            # Sauvegarde en Excel
+            # Save to Excel
             excel_file = os.path.join(ANALYSE_DIR, "eps_summary_stats.xlsx")
             with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
-                summary_df.to_excel(writer, sheet_name='Resume_General', index=False)
-                stats_df.to_excel(writer, sheet_name='Statistiques_Descriptives')
-                anomaly_dist_df.to_excel(writer, sheet_name='Distribution_Anomalies', index=False)
+                summary_df.to_excel(writer, sheet_name='General_Summary', index=False)
+                stats_df.to_excel(writer, sheet_name='Descriptive_Statistics')
+                anomaly_dist_df.to_excel(writer, sheet_name='Anomaly_Distribution', index=False)
                 
-                # Matrice de correlation
+                # Correlation matrix
                 corr_matrix = df[sensor_cols].corr()
-                corr_matrix.to_excel(writer, sheet_name='Matrice_Correlation')
+                corr_matrix.to_excel(writer, sheet_name='Correlation_Matrix')
             
-            print(f"Rapport Excel genere: {excel_file}")
-            logger.info(f"Rapport Excel sauvegarde: {excel_file}")
+            print(f"Excel report generated: {excel_file}")
+            logger.info(f"Excel report saved: {excel_file}")
             
         except Exception as e:
-            logger.error(f"Erreur generation rapport Excel: {e}")
-            print(f"Erreur generation rapport Excel: {e}")
+            logger.error(f"Excel report generation error: {e}")
+            print(f"Excel report generation error: {e}")
 
     def _export_obc_summary(self, df):
-        """Exporte un resume JSON pour simulation OBC"""
-        logger.info("Generation resume OBC...")
+        """Exports a JSON summary for OBC simulation"""
+        logger.info("Generating OBC summary...")
         
         sensor_cols = ['V_batt', 'I_batt', 'T_batt', 'V_solar', 'I_solar', 'V_bus', 'I_bus', 'T_eps', 'SOC']
         sensor_cols = [col for col in sensor_cols if col in df.columns]
         
-        # Calcul des metriques de performance
+        # Calculate performance metrics
         battery_health = self._calculate_battery_health(df)
         system_stability = self._calculate_system_stability(df)
         solar_efficiency = self._calculate_solar_efficiency(df)
@@ -686,8 +686,8 @@ class ProEPSAnalyzer:
         with open(summary_file, "w", encoding='utf-8') as f:
             json.dump(json.loads(json.dumps(summary, default=str)), f, indent=2, ensure_ascii=False)
         
-        print(f"Resume OBC sauvegarde: {summary_file}")
-        logger.info("Resume OBC genere avec succes")
+        print(f"OBC summary saved: {summary_file}")
+        logger.info("OBC summary generated successfully")
         
         # Affichage synthese
         print("\n" + "="*50)

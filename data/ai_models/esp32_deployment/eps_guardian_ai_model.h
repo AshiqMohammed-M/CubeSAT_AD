@@ -1,7 +1,7 @@
 // ====================================================
-// Fichier généré automatiquement - EPS Guardian AI Model
-// Modèle TensorFlow Lite pour déploiement ESP32
-// Généré le: 2025-10-23 17:08:49
+// Automatically generated - EPS Guardian AI Model
+// TensorFlow Lite Model for ESP32 deployment
+// Generated on: 2025-10-23 17:08:49
 // ====================================================
 
 #ifndef EPS_GUARDIAN_AI_MODEL_H
@@ -13,7 +13,7 @@
 namespace eps_guardian {
 namespace ai_model {
 
-// Données du modèle TensorFlow Lite
+// TensorFlow Lite Model Data
 alignas(8) const uint8_t g_ai_model_data[] = {
     
     0x1c, 0x00, 0x00, 0x00, 0x54, 0x46, 0x4c, 0x33, 0x14, 0x00, 0x20, 0x00, 
@@ -15953,15 +15953,15 @@ alignas(8) const uint8_t g_ai_model_data[] = {
     0x00, 0x00, 0x00, 0x06
 };
 
-// Taille du modèle en bytes
+// Taille du modï¿½le en bytes
 const size_t g_ai_model_size = sizeof(g_ai_model_data);
 
-// Seuils d'anomalie (basés sur l'erreur de reconstruction)
+// Seuils d'anomalie (basï¿½s sur l'erreur de reconstruction)
 constexpr float NORMAL_THRESHOLD = 0.609123f;
 constexpr float WARNING_THRESHOLD = 0.837789f;
 constexpr float CRITICAL_THRESHOLD = 1.066455f;
 
-// Configuration du modèle
+// Configuration du modï¿½le
 constexpr int SEQUENCE_LENGTH = 30;
 constexpr int FEATURE_COUNT = 7;
 constexpr int TENSOR_ARENA_SIZE = 40 * 1024; // 40KB pour LSTM

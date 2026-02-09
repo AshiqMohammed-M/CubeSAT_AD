@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-TEST RÉEL DE L'IA OBC - AVEC VOTRE MODÈLE RÉEL
-Teste le vrai modèle LSTM Autoencoder du dossier model_complex/
+REAL-WORLD TEST OF OBC AI - WITH YOUR ACTUAL MODEL
+Tests the actual LSTM Autoencoder model from the model_complex/ folder
 """
-
+#completed
 import os
 import sys
 import time
@@ -11,7 +11,7 @@ import json
 import numpy as np
 from datetime import datetime, timedelta
 
-# Correction des imports
+# Correction of imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from interface.obc_message_handler import OBCMessageHandler
@@ -19,10 +19,10 @@ from interface.obc_response_generator import OBCResponseGenerator
 
 class RealAI_FusionTest:
     def __init__(self):
-        print(" TEST RÉEL DE L'IA OBC - MODÈLE LSTM AUTOENCODEUR")
+        print(" REAL-WORLD TEST OF OBC AI - LSTM AUTOENCODER MODEL")
         print("=" * 60)
         
-        # Vérification de l'IA réelle
+        # Check for real AI
         self.check_real_ai()
         
         self.handler = OBCMessageHandler()
@@ -32,34 +32,34 @@ class RealAI_FusionTest:
         self.warning_detections = 0
         self.normal_detections = 0
         
-        print(" Test configuré pour utiliser le VRAI modèle IA OBC")
+        print(" Test configured to use the REAL OBC AI model")
 
     def check_real_ai(self):
-        """Vérifie que le vrai modèle IA est disponible"""
+        """Checks if the real AI model is available"""
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         model_path = os.path.join(project_root, "data", "ai_models", "model_complex", "ai_model_lstm_autoencoder.h5")
         thresholds_path = os.path.join(project_root, "data", "ai_models", "model_complex", "ai_thresholds.json")
         
-        print(f"  Recherche du modèle IA réel...")
-        print(f"   Modèle: {model_path}")
-        print(f"   Seuils: {thresholds_path}")
+        print(f"  Searching for the real AI model...")
+        print(f"   Model: {model_path}")
+        print(f"   Thresholds: {thresholds_path}")
         
         if os.path.exists(model_path):
-            print(f" MODÈLE RÉEL TROUVÉ: {os.path.getsize(model_path)/1024/1024:.1f} MB")
+            print(f" REAL MODEL FOUND: {os.path.getsize(model_path)/1024/1024:.1f} MB")
         else:
-            print(f" MODÈLE NON TROUVÉ - Le test utilisera le mode simulation")
+            print(f" MODEL NOT FOUND - The test will use simulation mode")
             
         if os.path.exists(thresholds_path):
             with open(thresholds_path, 'r') as f:
                 thresholds = json.load(f)
-            print(f" SEUILS CHARGÉS: {thresholds['anomaly_thresholds']}")
+            print(f" THRESHOLDS LOADED: {thresholds['anomaly_thresholds']}")
         else:
-            print(" SEUILS NON TROUVÉS")
+            print(" THRESHOLDS NOT FOUND")
 
     def generate_realistic_sensor_sequence(self, anomaly_type="NONE", progression=0):
         """
-        Génère une séquence réaliste de 30 points pour le LSTM
-        Format requis: (30, 7) - 30 timesteps, 7 features
+        Generates a realistic sequence of 30 points for the LSTM
+        Required format: (30, 7) - 30 timesteps, 7 features
         """
         sequence = []
         base_time = datetime.now() - timedelta(seconds=30)
@@ -67,7 +67,7 @@ class RealAI_FusionTest:
         for i in range(30):
             timestamp = base_time + timedelta(seconds=i)
             
-            # Valeurs de base nominales
+            # Base nominal values
             base_values = {
                 "V_batt": 7.4,
                 "I_batt": 1.2, 
@@ -78,28 +78,28 @@ class RealAI_FusionTest:
                 "I_solar": 1.5
             }
             
-            # Application d'anomalies réalistes
+            # Application of realistic anomalies
             if anomaly_type == "OVERHEAT":
-                # Surchauffe progressive réaliste
+                # Realistic progressive overheating
                 base_values["T_batt"] = 40.0 + (i * 1.0) + (progression * 10)
-                base_values["I_batt"] *= 1.2  # Courant augmente avec température
+                base_values["I_batt"] *= 1.2  # Current increases with temperature
                 
             elif anomaly_type == "OVERCURRENT":
-                # Surcharge courant réaliste
+                # Realistic current overload
                 base_values["I_batt"] = 2.5 + np.random.normal(0, 0.3)
-                base_values["V_batt"] *= 0.95  # Tension baisse légèrement
+                base_values["V_batt"] *= 0.95  # Voltage slightly decreases
                 
             elif anomaly_type == "UNDERVOLTAGE":
-                # Décharge profonde réaliste
+                # Realistic deep discharge
                 base_values["V_batt"] = 3.5 - (i * 0.05) - (progression * 0.5)
-                base_values["I_batt"] = -1.5  # Batterie se décharge
+                base_values["I_batt"] = -1.5  # Battery discharges
                 
             elif anomaly_type == "CONVERTER_FAULT":
-                # Défaillance convertisseur réaliste
+                # Realistic converter fault
                 base_values["V_bus"] = 5.0 + np.random.normal(0, 0.5)
-                base_values["converter_ratio"] = 0.3  # Ratio anormal
+                base_values["converter_ratio"] = 0.3  # Abnormal ratio
                 
-            # Ajout de bruit réaliste
+            # Addition of realistic noise
             noisy_data = {
                 "timestamp": timestamp.isoformat() + "Z",
                 "V_batt": base_values["V_batt"] + np.random.normal(0, 0.02),
@@ -116,10 +116,10 @@ class RealAI_FusionTest:
         return sequence
 
     def create_real_test_message(self, sequence_data, anomaly_type="NONE"):
-        """Crée un message de test réaliste pour l'IA"""
+        """Creates a realistic test message for the AI"""
         self.message_count += 1
         
-        # Détermine le type de message basé sur l'anomalie
+        # Determines the message type based on the anomaly
         if anomaly_type == "NONE":
             message_type = "SUMMARY"
             priority = "MEDIUM"
@@ -137,36 +137,36 @@ class RealAI_FusionTest:
                 "version": "1.0"
             },
             "payload": {
-                "sensor_data": sequence_data[-5:],  # Dernières mesures
+                "sensor_data": sequence_data[-5:],  # Last measurements
                 "temporal_window": {
                     "window_size_seconds": 30,
                     "data_points_count": len(sequence_data),
-                    "sensor_data": sequence_data  # Séquence complète pour l'IA
+                    "sensor_data": sequence_data  # Complete sequence for the AI
                 },
                 "emergency_level": "HIGH" if anomaly_type != "NONE" else "MEDIUM",
-                "test_anomaly_type": anomaly_type  # Pour le debug
+                "test_anomaly_type": anomaly_type  # For debugging
             }
         }
         
         return message
 
     def run_real_ai_test(self, duration_minutes=5):
-        """Exécute le test avec le vrai modèle IA"""
-        print(f"\n DÉMARRAGE TEST IA RÉELLE - Durée: {duration_minutes} minutes")
-        print("Cycle | Anomalie      | Score IA   | Niveau IA  | Décision OBC")
+        """Runs the test with the real AI model"""
+        print(f"\n STARTING REAL AI TEST - Duration: {duration_minutes} minutes")
+        print("Cycle | Anomaly      | AI Score   | AI Level  | OBC Decision")
         print("-" * 70)
         
         end_time = time.time() + (duration_minutes * 60)
         cycle = 0
         
-        # Scénarios de test réalistes
+        # Realistic test scenarios
         test_scenarios = [
-            ("NONE", "Système nominal"),
-            ("OVERHEAT", "Surchauffe progressive"), 
-            ("OVERCURRENT", "Surcharge courant"),
-            ("UNDERVOLTAGE", "Décharge batterie"),
-            ("CONVERTER_FAULT", "Défaillance convertisseur"),
-            ("NONE", "Retour à la normale")
+            ("NONE", "Nominal system"),
+            ("OVERHEAT", "Progressive overheating"), 
+            ("OVERCURRENT", "Current overload"),
+            ("UNDERVOLTAGE", "Battery discharge"),
+            ("CONVERTER_FAULT", "Converter failure"),
+            ("NONE", "Return to normal")
         ]
         
         while time.time() < end_time and cycle < len(test_scenarios):
@@ -175,28 +175,28 @@ class RealAI_FusionTest:
             
             print(f"\n TEST {cycle}: {description}")
             
-            # Génération séquence réaliste
+            # GGeneration of realistic sequence
             sequence = self.generate_realistic_sensor_sequence(
                 anomaly_type=anomaly_type, 
                 progression=cycle/len(test_scenarios)
             )
             
-            # Création message de test
+            # Creation of test message
             test_message = self.create_real_test_message(sequence, anomaly_type)
             
-            # Traitement par l'OBC avec la VRAIE IA
+            # Processing by OBC with the REAL AI
             start_time = time.time()
             obc_response = self.handler.process_mcu_message(test_message)
             processing_time = (time.time() - start_time) * 1000  # ms
             
-            # Extraction résultats IA
+            # Extraction of AI results
             ai_analysis = obc_response.get('ai_analysis', {})
             ai_score = ai_analysis.get('ai_score', 0)
             ai_level = ai_analysis.get('ai_level', 'UNKNOWN')
             confidence = ai_analysis.get('confidence', 'LOW')
             simulated = ai_analysis.get('simulated', True)
             
-            # Statistiques
+            # Statistics
             if ai_level == 'CRITICAL':
                 self.critical_detections += 1
             elif ai_level == 'WARNING':
@@ -204,70 +204,68 @@ class RealAI_FusionTest:
             else:
                 self.normal_detections += 1
             
-            # Affichage résultats détaillés
-            print(f"    Score IA: {ai_score:.6f}")
-            print(f"    Niveau: {ai_level} (Confiance: {confidence})")
-            print(f"    Modèle: {'SIMULATION' if simulated else 'LSTM RÉEL'}")
-            print(f"    Temps traitement: {processing_time:.1f}ms")
-            print(f"    Décision OBC: {obc_response['decision']} -> {obc_response['action']}")
+            # Display detailed results
+            print(f"    AI Score: {ai_score:.6f}")
+            print(f"    Level: {ai_level} (Confidence: {confidence})")
+            print(f"    Model: {'SIMULATION' if simulated else 'REAL LSTM'}")
+            print(f"    Processing time: {processing_time:.1f}ms")
+            print(f"    OBC Decision: {obc_response['decision']} -> {obc_response['action']}")
             
-            # Vérification cohérence détection
+            # Detection consistency check
             if anomaly_type != "NONE" and ai_level == "NORMAL":
-                print(f"   ️  ATTENTION: Anomalie '{anomaly_type}' non détectée!")
+                print(f"   ️  WARNING: Anomaly '{anomaly_type}' not detected!")
             elif anomaly_type == "NONE" and ai_level != "NORMAL":
-                print(f"   ️  ATTENTION: Faux positif! Normal détecté comme {ai_level}")
+                print(f"   ️  WARNING: False positive! Normal detected as {ai_level}")
             
-            time.sleep(3)  # Pause pour analyse
-
+            time.sleep(3)  # Pause for analysis
         self._print_real_test_summary()
 
     def _print_real_test_summary(self):
-        """Affiche le résumé détaillé du test réel"""
+        """Displays the detailed summary of the real test"""
         print("\n" + "=" * 70)
-        print(" RAPPORT FINAL - TEST IA RÉELLE OBC")
+        print(" FINAL REPORT - OBC REAL AI TEST")
         print("=" * 70)
         
         total_tests = self.critical_detections + self.warning_detections + self.normal_detections
         
-        print(f"Tests effectués: {total_tests}")
-        print(f"Détections CRITICAL: {self.critical_detections}")
-        print(f"Détections WARNING: {self.warning_detections}") 
-        print(f"Détections NORMAL: {self.normal_detections}")
+        print(f"Tests performed: {total_tests}")
+        print(f"CRITICAL detections: {self.critical_detections}")
+        print(f"WARNING detections: {self.warning_detections}") 
+        print(f"NORMAL detections: {self.normal_detections}")
         
         if total_tests > 0:
-            print(f"Taux CRITICAL: {(self.critical_detections/total_tests)*100:.1f}%")
-            print(f"Taux WARNING: {(self.warning_detections/total_tests)*100:.1f}%")
-            print(f"Taux NORMAL: {(self.normal_detections/total_tests)*100:.1f}%")
+            print(f"CRITICAL rate: {(self.critical_detections/total_tests)*100:.1f}%")
+            print(f"WARNING rate: {(self.warning_detections/total_tests)*100:.1f}%")
+            print(f"NORMAL rate: {(self.normal_detections/total_tests)*100:.1f}%")
         
-        # Évaluation performance
-        print("\n ÉVALUATION IA RÉELLE:")
+        # Performance evaluation
+        print("\n REAL AI EVALUATION:")
         if self.critical_detections > 0:
-            print(" L'IA détecte les anomalies critiques")
+            print(" The AI detects critical anomalies")
         else:
-            print(" Aucune anomalie critique détectée - vérifiez le modèle")
+            print(" No critical anomalies detected - check the model")
             
         if self.normal_detections > 0:
-            print(" L'IA reconnaît le comportement normal")
+            print(" The AI recognizes normal behavior")
         else:
-            print(" Aucun comportement normal reconnu - vérifiez les seuils")
+            print(" No normal behavior recognized - check the thresholds")
 
 def main():
-    """Point d'entrée principal"""
-    print(" SYSTÈME DE TEST IA RÉELLE - EPS GUARDIAN OBC")
-    print("Ce test utilise le VRAI modèle LSTM Autoencoder")
+    """Main entry point"""
+    print(" REAL AI TEST SYSTEM - EPS GUARDIAN OBC")
+    print("This test uses the REAL LSTM Autoencoder model")
     print("=" * 60)
     
-    # Demander la durée à l'utilisateur
+    # Ask the user for the duration
     try:
-        duration = int(input("Durée du test (minutes, défaut: 5): ") or "5")
+        duration = int(input("Test duration (minutes, default: 5): ") or "5")
     except:
         duration = 5
     
-    # Lancer le test
+    # Run the test
     real_tester = RealAI_FusionTest()
     real_tester.run_real_ai_test(duration)
     
-    print(f"\n TEST TERMINÉ! Vérifiez les logs dans data/obc/logs/")
-
+    print(f"\n TEST COMPLETED! Check the logs in data/obc/logs/")
 if __name__ == "__main__":
     main()

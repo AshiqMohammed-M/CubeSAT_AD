@@ -1,7 +1,7 @@
 // ======================================
 // EPS GUARDIAN ESP32
-// Règles Déterministes + IA Autoencodeur
-// Système Hybride
+// Deterministic Rules + Autoencoder AI
+// Hybrid System
 // ======================================
 
 #include "eps_guardian_ai_model.h"
@@ -11,24 +11,24 @@
 #include <tensorflow/lite/schema/schema_generated.h>
 
 // ======================
-// CONFIGURATION MÉMOIRE
+// MEMORY CONFIGURATION
 // ======================
 constexpr int kTensorArenaSize = 12 * 1024;
 static uint8_t tensor_arena[kTensorArenaSize];
 
 // ======================
-// SEUILS RÈGLES DÉTERMINISTES (R1-R7)
+// DETERMINISTIC RULES THRESHOLDS (R1-R7)
 // ======================
-constexpr float RULE_TEMP_CRITICAL = 60.0f;      // R1 - Surchauffe batterie
-constexpr float RULE_CURRENT_CRITICAL = 3.0f;    // R2 - Surcharge courant
-constexpr float RULE_VOLTAGE_CRITICAL = 3.2f;    // R3 - Décharge profonde
-constexpr float RULE_RATIO_CRITICAL = 0.7f;      // R4 - Ratio DC/DC
-constexpr float RULE_SENSOR_FAULT = 120.0f;      // R6 - Défaut capteur
-constexpr float RULE_OSCILLATION_V = 0.5f;       // R5 - Oscillation tension
-constexpr float RULE_OSCILLATION_T = 5.0f;       // R5 - Oscillation température
+constexpr float RULE_TEMP_CRITICAL = 60.0f;      // R1 - Battery overheating
+constexpr float RULE_CURRENT_CRITICAL = 3.0f;    // R2 - Current overload
+constexpr float RULE_VOLTAGE_CRITICAL = 3.2f;    // R3 - Deep discharge
+constexpr float RULE_RATIO_CRITICAL = 0.7f;      // R4 - DC/DC ratio
+constexpr float RULE_SENSOR_FAULT = 120.0f;      // R6 - Sensor fault
+constexpr float RULE_OSCILLATION_V = 0.5f;       // R5 - Voltage oscillation
+constexpr float RULE_OSCILLATION_T = 5.0f;       // R5 - Temperature oscillation
 
 // ======================
-// PINS ESP32
+// ESP32 PINS
 // ======================
 const int LED_NORMAL = 2;
 const int LED_WARNING = 4;
@@ -37,18 +37,18 @@ const int MOSFET_PIN = 12;
 const int BUZZER_PIN = 13;
 
 // ======================
-// CLASSE PRINCIPALE
+// MAIN CLASS
 // ======================
 class EPSGuardianFusion {
 private:
-    // Composants IA
+    // AI Components
     const tflite::Model* ai_model;
     tflite::MicroInterpreter* ai_interpreter;
     TfLiteTensor* ai_input;
     TfLiteTensor* ai_output;
     tflite::AllOpsResolver resolver;
 
-    // État système et historique
+    // System state and history
     struct SystemState {
         float v_batt = 7.4f;
         float i_batt = 1.2f;
@@ -63,40 +63,40 @@ private:
         unsigned long last_cycle_time = 0;
     } state;
 
-    // Historique pour calcul des deltas
+    // History for delta calculations
     float prev_v_batt = 7.4f;
     float prev_t_batt = 35.0f;
 
 public:
     // ======================
-    // INITIALISATION IA
+    // AI INITIALIZATION
     // ======================
     bool initializeAI() {
-        Serial.println("Initialisation modèle IA...");
+        Serial.println("Initializing AI model...");
         
-        // Charger le modèle
+        // Load the model
         ai_model = tflite::GetModel(eps_guardian::ai_model::g_ai_model_data);
         if (ai_model->version() != TFLITE_SCHEMA_VERSION) {
-            Serial.println("Version modèle incompatible");
+            Serial.println("Incompatible model version");
             return false;
         }
 
-        // Créer l'interpréteur
+        // Create the interpreter
         static tflite::MicroInterpreter static_interpreter(
             ai_model, resolver, tensor_arena, kTensorArenaSize);
         ai_interpreter = &static_interpreter;
 
-        // Allouer la mémoire
+        // Allocate memory
         if (ai_interpreter->AllocateTensors() != kTfLiteOk) {
-            Serial.println("Erreur allocation mémoire IA");
+            Serial.println("AI memory allocation error");
             return false;
         }
 
         ai_input = ai_interpreter->input(0);
         ai_output = ai_interpreter->output(0);
         
-        Serial.println("Modèle IA initialisé");
-        Serial.print("Taille modèle: ");
+        Serial.println("AI model initialized");
+        Serial.print("Model size: ");
         Serial.print(eps_guardian::ai_model::g_ai_model_size);
         Serial.println(" bytes");
         
@@ -104,66 +104,66 @@ public:
     }
 
     // ======================
-    // RÈGLES DÉTERMINISTES (R1-R7)
+    // DETERMINISTIC RULES (R1-R7)
     // ======================
     int executeSafetyRules() {
-        // R1: Surchauffe batterie → Coupure MOSFET
+        // R1: Battery overheating -> MOSFET cutoff
         if (state.t_batt > RULE_TEMP_CRITICAL) {
-            Serial.println("R1: Surchauffe batterie détectée");
+            Serial.println("R1: Battery overheating detected");
             state.mosfet_enabled = false;
             return 2; // CRITICAL
         }
         
-        // R2: Surcharge courant → Limitation charge
+        // R2: Current overload -> Charge limitation
         if (abs(state.i_batt) > RULE_CURRENT_CRITICAL) {
-            Serial.println("R2: Surcharge courant détectée");
+            Serial.println("R2: Current overload detected");
             state.charge_enabled = false;
             return 2; // CRITICAL
         }
         
-        // R3: Décharge profonde → Isolation batterie
+        // R3: Deep discharge -> Battery isolation
         if (state.v_batt < RULE_VOLTAGE_CRITICAL && state.i_batt < 0) {
-            Serial.println("R3: Décharge profonde détectée");
+            Serial.println("R3: Deep discharge detected");
             state.mosfet_enabled = false;
             return 2; // CRITICAL
         }
         
-        // R4: Ratio DC/DC anormal → Réduction charge
+        // R4: Abnormal DC/DC ratio -> Charge reduction
         float ratio = (state.v_solar > 0.1f) ? state.v_bus / state.v_solar : 0.0f;
         if (ratio < RULE_RATIO_CRITICAL && ratio > 0.01f) {
-            Serial.println("R4: Ratio DC/DC anormal");
+            Serial.println("R4: Abnormal DC/DC ratio");
             state.charge_enabled = false;
             return 1; // WARNING
         }
         
-        // R5: Oscillation bus → Logging augmenté
+        // R5: Bus oscillation -> Increased logging
         float delta_v = abs(state.v_batt - prev_v_batt);
         float delta_t = abs(state.t_batt - prev_t_batt);
         
         if (delta_v > RULE_OSCILLATION_V || delta_t > RULE_OSCILLATION_T) {
-            Serial.println("R5: Oscillation détectée");
+            Serial.println("R5: Oscillation detected");
             return 1; // WARNING
         }
         
-        // R6: Défaut capteur → Mode sans échec
+        // R6: Sensor fault -> Safe mode
         if (state.t_batt > RULE_SENSOR_FAULT || state.v_batt > 20.0f) {
-            Serial.println("R6: Défaut capteur suspecté");
+            Serial.println("R6: Suspected sensor fault");
             return 1; // WARNING
         }
         
-        // R7: État normal → LED verte
+        // R7: Normal state -> Green LED
         return 0; // NORMAL
     }
 
     // ======================
-    // DÉTECTION IA AUTOENCODEUR
+    // AUTOENCODER AI DETECTION
     // ======================
     float detectAIAnomaly() {
-        // Calculer les deltas pour features temporelles
+        // Calculate deltas for temporal features
         float delta_v_batt = state.v_batt - prev_v_batt;
         float delta_t_batt = state.t_batt - prev_t_batt;
         
-        // Préparer les 11 features exactement comme l'entraînement
+        // Prepare 11 features exactly like training
         float features[11] = {
             state.v_batt, state.i_batt, state.t_batt,
             state.v_bus, state.i_bus, 
@@ -174,18 +174,18 @@ public:
             delta_t_batt                                    // delta_T_batt
         };
         
-        // Copier dans le tensor d'entrée
+        // Copy into input tensor
         for (int i = 0; i < 11; i++) {
             ai_input->data.f[i] = features[i];
         }
         
-        // Exécuter l'inférence
+        // Execute inference
         if (ai_interpreter->Invoke() != kTfLiteOk) {
-            Serial.println("Erreur inférence IA");
+            Serial.println("AI inference error");
             return -1.0f;
         }
         
-        // Calculer l'erreur de reconstruction (MSE)
+        // Calculate reconstruction error (MSE)
         float reconstruction_error = 0.0f;
         for (int i = 0; i < 11; i++) {
             float diff = ai_input->data.f[i] - ai_output->data.f[i];
@@ -198,7 +198,7 @@ public:
 
     int getAIAnomalyLevel(float error) {
         if (error < 0) {
-            return -1; // ERREUR
+            return -1; // ERROR
         } else if (error < eps_guardian::ai_model::NORMAL_THRESHOLD) {
             return 0;  // NORMAL
         } else if (error < eps_guardian::ai_model::WARNING_THRESHOLD) {
@@ -209,31 +209,31 @@ public:
     }
 
     // ======================
-    // DÉCISION HYBRIDE
+    // HYBRID DECISION
     // ======================
     int hybridDecision() {
-        // 1. EXÉCUTER RÈGLES DÉTERMINISTES (Priorité haute)
+        // 1. EXECUTE DETERMINISTIC RULES (High priority)
         int rule_level = executeSafetyRules();
-        if (rule_level == 2) { // CRITICAL par règles → Action immédiate
-            Serial.println("Décision: Règles critiques → Action immédiate");
+        if (rule_level == 2) { // CRITICAL by rules -> Immediate action
+            Serial.println("Decision: Critical rules -> Immediate action");
             takeEmergencyAction();
             return 2;
         }
         
-        // 2. DÉTECTION IA (Patterns complexes)
+        // 2. AI DETECTION (Complex patterns)
         float ai_error = detectAIAnomaly();
         int ai_level = getAIAnomalyLevel(ai_error);
         
         if (ai_level == -1) {
-            Serial.println("IA en erreur, confiance réduite");
-            ai_level = 0; // Fallback vers normal
+            Serial.println("AI in error, reduced confidence");
+            ai_level = 0; // Fallback to normal
         }
         
-        // 3. DÉCISION FINALE - Le pire des deux
+        // 3. FINAL DECISION - Worst of the two
         int final_level = max(rule_level, ai_level);
         state.anomaly_level = final_level;
         
-        // Mettre à jour l'historique
+        // Update history
         prev_v_batt = state.v_batt;
         prev_t_batt = state.t_batt;
         
@@ -241,27 +241,27 @@ public:
     }
 
     // ======================
-    // ACTIONS PHYSIQUES
+    // PHYSICAL ACTIONS
     // ======================
     void takeEmergencyAction() {
-        // Actions critiques immédiates
+        // Immediate critical actions
         digitalWrite(LED_CRITICAL, HIGH);
         digitalWrite(LED_WARNING, LOW);
         digitalWrite(LED_NORMAL, LOW);
         
-        // Coupure de sécurité
+        // Safety cutoff
         state.mosfet_enabled = false;
         state.charge_enabled = false;
         digitalWrite(MOSFET_PIN, LOW);
         
-        // Alarme sonore
+        // Sound alarm
         tone(BUZZER_PIN, 1000, 1000);
         
-        Serial.println("ACTION D'URGENCE: Coupure sécurité activée");
+        Serial.println("URGENCY ACTION: Safety cutoff activated");
     }
 
     void takePreventiveAction(int level) {
-        // Réinitialiser toutes les LEDs
+        // Reset all LEDs
         digitalWrite(LED_CRITICAL, LOW);
         digitalWrite(LED_WARNING, LOW);
         digitalWrite(LED_NORMAL, LOW);
@@ -277,9 +277,9 @@ public:
                 
             case 1: // WARNING
                 digitalWrite(LED_WARNING, HIGH);
-                state.charge_enabled = false; // Réduction charge
-                tone(BUZZER_PIN, 500, 200); // Bip court
-                Serial.println("ACTION: Réduction charge active");
+                state.charge_enabled = false; // Charge reduction
+                tone(BUZZER_PIN, 500, 200); // Short beep
+                Serial.println("ACTION: Charge reduction active");
                 break;
                 
             case 2: // CRITICAL  
@@ -289,26 +289,26 @@ public:
     }
 
     // ======================
-    // MISE À JOUR CAPTEURS (Simulation/Réel)
+    // SENSOR UPDATE (Simulation/Real)
     // ======================
     void updateSensorReadings() {
-        // REMPLACER PAR VRAIES LECTURES CAPTEURS
-        // Simulation: légères variations aléatoires + scénarios tests
+        // REPLACE WITH REAL SENSOR READINGS
+        // Simulation: slight random variations + test scenarios
         
         static int cycle_count = 0;
         cycle_count++;
         
-        // Scénario test: toutes les 20 cycles, simuler une anomalie
+        // Test scenario: every 20 cycles, simulate an anomaly
         if (cycle_count % 20 == 0) {
-            // Simuler une surchauffe
+            // Simulate overheating
             state.t_batt = 65.0f;
             state.i_batt = 3.5f;
         } else if (cycle_count % 15 == 0) {
-            // Simuler une anomalie subtile (détectable par IA)
+            // Simulate subtle anomaly (detectable by AI)
             state.v_batt = 5.8f;
             state.v_solar = 25.0f;
         } else {
-            // Comportement normal avec bruit
+            // Normal behavior with noise
             state.v_batt += random(-10, 10) * 0.001f;
             state.i_batt += random(-5, 5) * 0.01f;
             state.t_batt += random(-3, 3) * 0.05f;
@@ -318,7 +318,7 @@ public:
             state.i_solar += random(-10, 10) * 0.01f;
         }
         
-        // Limites physiques réalistes
+        // Realistic physical limits
         state.v_batt = constrain(state.v_batt, 2.5f, 8.5f);
         state.i_batt = constrain(state.i_batt, -4.0f, 4.0f);
         state.t_batt = constrain(state.t_batt, -10.0f, 80.0f);
@@ -327,16 +327,16 @@ public:
     }
 
     // ======================
-    // AFFICHAGE STATUT
+    // STATUS DISPLAY
     // ======================
     void printSystemStatus() {
-        Serial.print("Batterie: ");
+        Serial.print("Battery: ");
         Serial.print(state.v_batt, 2);
         Serial.print("V, ");
         Serial.print(state.i_batt, 2);
         Serial.print("A, ");
         Serial.print(state.t_batt, 1);
-        Serial.println("°C");
+        Serial.println("C");
         
         Serial.print("Bus: ");
         Serial.print(state.v_bus, 2);
@@ -358,7 +358,7 @@ public:
 };
 
 // ======================
-// INSTANCE GLOBALE
+// GLOBAL INSTANCE
 // ======================
 EPSGuardianFusion guardian;
 
@@ -367,19 +367,19 @@ EPSGuardianFusion guardian;
 // ======================
 void setup() {
     Serial.begin(115200);
-    delay(1000); // Attendre la connexion série
+    delay(1000); // Wait for serial connection
     
-    Serial.println("\n\n EPS GUARDIAN FUSION - Démarrage");
+    Serial.println("\n\n EPS GUARDIAN FUSION - Startup");
     Serial.println("==========================================");
     
-    // Configuration des pins
+    // Pin configuration
     pinMode(LED_NORMAL, OUTPUT);
     pinMode(LED_WARNING, OUTPUT);
     pinMode(LED_CRITICAL, OUTPUT);
     pinMode(MOSFET_PIN, OUTPUT);
     pinMode(BUZZER_PIN, OUTPUT);
     
-    // Séquence de démarrage
+    // Startup sequence
     digitalWrite(LED_NORMAL, HIGH);
     delay(300);
     digitalWrite(LED_WARNING, HIGH);
@@ -390,43 +390,43 @@ void setup() {
     digitalWrite(LED_WARNING, LOW);
     digitalWrite(LED_CRITICAL, LOW);
     
-    // Initialisation IA
+    // AI Initialization
     if (guardian.initializeAI()) {
-        Serial.println("Système hybride initialisé");
+        Serial.println("Hybrid system initialized");
     } else {
-        Serial.println("Échec initialisation - Mode sans échec");
-        // Continuer avec règles seulement
+        Serial.println("Initialization failed - Safe mode");
+        // Continue with rules only
     }
     
-    Serial.println("Prêt pour surveillance temps réel");
+    Serial.println("Ready for real-time monitoring");
     Serial.println("==========================================");
 }
 
 // ======================
-// BOUCLE PRINCIPALE
+// MAIN LOOP
 // ======================
 void loop() {
-    Serial.println("\n--- Cycle de surveillance ---");
+    Serial.println("\n--- Monitoring cycle ---");
     
-    // 1. Mettre à jour les lectures capteurs
+    // 1. Update sensor readings
     guardian.updateSensorReadings();
     
-    // 2. Décision hybride (Règles + IA)
+    // 2. Hybrid decision (Rules + AI)
     int anomaly_level = guardian.hybridDecision();
     
-    // 3. Actions selon le niveau
+    // 3. Actions based on level
     guardian.takePreventiveAction(anomaly_level);
     
-    // 4. Affichage statut
-    Serial.print("Décision finale: ");
+    // 4. Status display
+    Serial.print("Final decision: ");
     switch(anomaly_level) {
         case 0: Serial.println("NORMAL"); break;
         case 1: Serial.println("WARNING"); break;
         case 2: Serial.println("CRITICAL"); break;
-        default: Serial.println("INCONNU");
+        default: Serial.println("UNKNOWN");
     }
     
     guardian.printSystemStatus();
     
-    delay(2000); // Cycle de 2 secondes
+    delay(2000); // 2 second cycle
 }

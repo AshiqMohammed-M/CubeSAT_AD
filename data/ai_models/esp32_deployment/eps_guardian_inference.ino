@@ -1,7 +1,7 @@
 // ====================================================
-// EPS Guardian - Système de Détection d'Anomalies IA
-// MCU: ESP32 avec TensorFlow Lite Micro
-// Modèle: LSTM Autoencoder pour séquences temporelles
+// EPS Guardian - AI Anomaly Detection System
+// MCU: ESP32 with TensorFlow Lite Micro
+// Model: LSTM Autoencoder for temporal sequences
 // ====================================================
 
 #include "eps_guardian_ai_model.h"
@@ -11,20 +11,20 @@
 #include <tensorflow/lite/schema/schema_generated.h>
 
 // ====================================================
-// CONFIGURATION MATÉRIELLE
+// HARDWARE CONFIGURATION
 // ====================================================
 
-// Broches pour LEDs de statut
+// Status LED pins
 #define LED_NORMAL 2
-#define LED_WARNING 4  
+#define LED_WARNING 4
 #define LED_CRITICAL 5
 
-// Buffer pour l'inférence
+// Buffer for inference
 constexpr int kTensorArenaSize = eps_guardian::ai_model::TENSOR_ARENA_SIZE;
 static uint8_t tensor_arena[kTensorArenaSize];
 
 // ====================================================
-// CLASSE PRINCIPALE EPS GUARDIAN AI
+// MAIN EPS GUARDIAN AI CLASS
 // ====================================================
 
 class EPSGuardianAI {
@@ -35,49 +35,49 @@ private:
     TfLiteTensor* output;
     tflite::AllOpsResolver resolver;
 
-    // Buffer pour les séquences capteurs
+    // Buffer for sensor sequences
     float sensor_sequence[eps_guardian::ai_model::SEQUENCE_LENGTH]
                         [eps_guardian::ai_model::FEATURE_COUNT];
     int sequence_index = 0;
 
 public:
     bool initialize() {
-        Serial.println("Initialisation EPS Guardian AI...");
+        Serial.println("Initializing EPS Guardian AI...");
         
-        // Chargement du modèle
+        // Model loading
         model = tflite::GetModel(eps_guardian::ai_model::g_ai_model_data);
         if (model->version() != TFLITE_SCHEMA_VERSION) {
-            Serial.println("ERREUR: Version du modèle incompatible!");
+            Serial.println("ERROR: Incompatible model version!");
             return false;
         }
         
-        // Initialisation de l'interpréteur
+        // Interpreter initialization
         static tflite::MicroInterpreter static_interpreter(
             model, resolver, tensor_arena, kTensorArenaSize);
         interpreter = &static_interpreter;
         
-        // Allocation des tenseurs
+        // Tensor allocation
         if (interpreter->AllocateTensors() != kTfLiteOk) {
-            Serial.println("ERREUR: Allocation des tenseurs échouée!");
+            Serial.println("ERROR: Tensor allocation failed!");
             return false;
         }
         
         input = interpreter->input(0);
         output = interpreter->output(0);
         
-        // Configuration des broches
+        // Pin configuration
         pinMode(LED_NORMAL, OUTPUT);
-        pinMode(LED_WARNING, OUTPUT);  
+        pinMode(LED_WARNING, OUTPUT);
         pinMode(LED_CRITICAL, OUTPUT);
         
-        Serial.println("EPS Guardian AI initialisé avec succès!");
-        Serial.println("Attente de données capteurs...");
+        Serial.println("EPS Guardian AI initialized successfully!");
+        Serial.println("Waiting for sensor data...");
         
         return true;
     }
 
     void add_sensor_data(float* sensor_values) {
-        // Ajout des nouvelles données à la séquence
+        // Add new data to sequence
         for (int i = 0; i < eps_guardian::ai_model::FEATURE_COUNT; i++) {
             sensor_sequence[sequence_index][i] = sensor_values[i];
         }
@@ -86,12 +86,12 @@ public:
     }
 
     float detect_anomaly() {
-        // Vérification que la séquence est complète
+        // Verify sequence is complete
         if (sequence_index != 0) {
-            Serial.println("ATTENTION: Séquence incomplète, utilisation des données disponibles");
+            Serial.println("WARNING: Incomplete sequence, using available data");
         }
         
-        // Copie des données dans le tenseur d'entrée
+        // Copy data to input tensor
         float* input_data = input->data.f;
         for (int i = 0; i < eps_guardian::ai_model::SEQUENCE_LENGTH; i++) {
             for (int j = 0; j < eps_guardian::ai_model::FEATURE_COUNT; j++) {
@@ -99,13 +99,13 @@ public:
             }
         }
         
-        // Inférence
+        // Inference
         if (interpreter->Invoke() != kTfLiteOk) {
-            Serial.println("ERREUR: Inférence échouée!");
+            Serial.println("ERROR: Inference failed!");
             return -1.0f;
         }
         
-        // Calcul de l'erreur de reconstruction
+        // Calculate reconstruction error
         float reconstruction_error = 0.0f;
         float* output_data = output->data.f;
         input_data = input->data.f;
@@ -131,12 +131,12 @@ public:
     }
 
     void update_leds(int anomaly_level) {
-        // Éteindre toutes les LEDs
+        // Turn off all LEDs
         digitalWrite(LED_NORMAL, LOW);
         digitalWrite(LED_WARNING, LOW);
         digitalWrite(LED_CRITICAL, LOW);
         
-        // Allumer la LED correspondante
+        // Turn on corresponding LED
         switch (anomaly_level) {
             case 0: // NORMAL
                 digitalWrite(LED_NORMAL, HIGH);
@@ -151,9 +151,9 @@ public:
     }
 
     void print_debug_info(float error, int level) {
-        Serial.print("Erreur reconstruction: ");
+        Serial.print("Reconstruction error: ");
         Serial.print(error, 6);
-        Serial.print(" | Niveau: ");
+        Serial.print(" | Level: ");
         
         switch (level) {
             case 0: Serial.println("NORMAL"); break;
@@ -161,7 +161,7 @@ public:
             case 2: Serial.println("CRITICAL"); break;
         }
         
-        Serial.print("Seuils - Normal<");
+        Serial.print("Thresholds - Normal<");
         Serial.print(eps_guardian::ai_model::NORMAL_THRESHOLD, 6);
         Serial.print(", Warning<");  
         Serial.print(eps_guardian::ai_model::WARNING_THRESHOLD, 6);
@@ -171,7 +171,7 @@ public:
 };
 
 // ====================================================
-// INSTANCE GLOBALE ET SETUP
+// GLOBAL INSTANCE AND SETUP
 // ====================================================
 
 EPSGuardianAI guardianAI;
@@ -181,25 +181,25 @@ void setup() {
     while (!Serial) { delay(10); }
     
     Serial.println("================================================");
-    Serial.println("EPS GUARDIAN - SYSTÈME IA EMBARQUÉ");
-    Serial.println("Détection d'anomalies EPS en temps réel");
+    Serial.println("EPS GUARDIAN - EMBEDDED AI SYSTEM");
+    Serial.println("Real-time EPS anomaly detection");
     Serial.println("================================================");
     
     if (!guardianAI.initialize()) {
-        Serial.println("ÉCHEC: Initialisation IA - Arrêt du système");
+        Serial.println("FAILURE: AI Initialization - System halted");
         while(1) { delay(1000); }
     }
 }
 
 // ====================================================
-// BOUCLE PRINCIPALE
+// MAIN LOOP
 // ====================================================
 
 void loop() {
-    // SIMULATION: Génération de données capteurs réalistes
+    // SIMULATION: Realistic sensor data generation
     float sensor_data[eps_guardian::ai_model::FEATURE_COUNT];
     
-    // Valeurs typiques d'un système EPS nominal
+    // Typical values of a nominal EPS system
     sensor_data[0] = 7.4f + random(-10, 10) / 100.0f;  // V_batt
     sensor_data[1] = 1.2f + random(-20, 20) / 100.0f;  // I_batt  
     sensor_data[2] = 35.0f + random(-50, 50) / 10.0f;  // T_batt
@@ -208,10 +208,10 @@ void loop() {
     sensor_data[5] = 15.2f + random(-20, 20) / 10.0f;  // V_solar
     sensor_data[6] = 1.5f + random(-10, 10) / 100.0f;  // I_solar
     
-    // Ajout des données à la séquence
+    // Add data to sequence
     guardianAI.add_sensor_data(sensor_data);
     
-    // Détection d'anomalie
+    // Anomaly detection
     float error = guardianAI.detect_anomaly();
     
     if (error >= 0) {
@@ -220,6 +220,6 @@ void loop() {
         guardianAI.print_debug_info(error, anomaly_level);
     }
     
-    // Cycle toutes les 2 secondes
+    // 2 second cycle
     delay(2000);
 }

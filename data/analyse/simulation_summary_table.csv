@@ -1,0 +1,2 @@
+simulation_date,simulation_mode,total_samples,normal_samples,anomaly_samples,critical_anomalies,battery_health_score,system_stability_score,solar_efficiency_score,physical_consistency,simulation_time_seconds,data_quality,random_seed
+2025-12-12 11:55:41,FULL,5956,5000,956,335,80.2,79.0,0.344,VALIDATED,33.3,HIGH,42

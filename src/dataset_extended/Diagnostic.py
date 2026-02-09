@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DIAGNOSTIC DE LA NORMALISATION - Investigation du problème
+NORMALIZATION DIAGNOSTIC - Problem investigation
 """
 
 import os
@@ -8,110 +8,110 @@ import numpy as np
 import pandas as pd
 import joblib
 
-PROJECT_ROOT = r"D:\Challenge AESS&IES"
+PROJECT_ROOT = r"D:\final_year_project\Cubesat_AD"
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "data", "ai_training_base")
 
 def diagnose_normalization_issue():
-    """Investigue le problème de normalisation trop parfaite"""
-    print(" DIAGNOSTIC DU PROBLÈME DE NORMALISATION")
+    """Investigates the overly perfect normalization problem"""
+    print(" NORMALIZATION PROBLEM DIAGNOSTIC")
     print("=" * 60)
     
     try:
-        # Charger les données
+        # Load data
         sequences = np.load(os.path.join(OUTPUT_DIR, 'ai_sequence_data.npy'))
         features = np.load(os.path.join(OUTPUT_DIR, 'ai_sequence_features.npy'))
         scaler_seq = joblib.load(os.path.join(OUTPUT_DIR, 'ai_sequence_scaler.pkl'))
         
-        print("1. ANALYSE DES SÉQUENCES ORIGINALES (avant normalisation):")
+        print("1. ORIGINAL SEQUENCE ANALYSIS (before normalization):")
         print("=" * 50)
         
-        # Vérifier si on a les données originales
+        # Check if we have original data
         original_data_path = os.path.join(PROJECT_ROOT, "data", "dataset", "pro_eps_dataset.csv")
         if os.path.exists(original_data_path):
             df_original = pd.read_csv(original_data_path)
-            print(f"Données originales - Shape: {df_original.shape}")
-            print("\nStatistiques des données originales:")
+            print(f"Original data - Shape: {df_original.shape}")
+            print("\nOriginal data statistics:")
             for col in ['V_batt', 'I_batt', 'T_batt', 'V_bus', 'I_bus', 'V_solar', 'I_solar']:
                 if col in df_original.columns:
                     print(f"  {col}: mean={df_original[col].mean():.3f}, std={df_original[col].std():.3f}")
         
-        print("\n2. ANALYSE DES SÉQUENCES NORMALISÉES:")
+        print("\n2. NORMALIZED SEQUENCE ANALYSIS:")
         print("=" * 50)
         
-        # Analyser les séquences normalisées
-        print(f"Shape des séquences: {sequences.shape}")
+        # Analyze normalized sequences
+        print(f"Sequence shape: {sequences.shape}")
         
-        # Vérifier par canal
-        print("\nPar canal (moyenne sur toutes les séquences):")
+        # Check by channel
+        print("\nBy channel (average over all sequences):")
         channels = ['V_batt', 'I_batt', 'T_batt', 'V_bus', 'I_bus', 'V_solar', 'I_solar']
         for i, channel in enumerate(channels):
             channel_data = sequences[:, :, i]
             print(f"  {channel}: mean={np.mean(channel_data):.6f}, std={np.std(channel_data):.6f}")
         
-        print("\n3. VÉRIFICATION DES VALEURS EXTRAORDINAIRES:")
+        print("\n3. EXTREME VALUES VERIFICATION:")
         print("=" * 50)
         
-        # Vérifier les min/max
-        print(f"Min global: {np.min(sequences):.6f}")
-        print(f"Max global: {np.max(sequences):.6f}")
+        # Check min/max
+        print(f"Global min: {np.min(sequences):.6f}")
+        print(f"Global max: {np.max(sequences):.6f}")
         
-        # Vérifier les valeurs uniques
+        # Check unique values
         unique_vals = np.unique(sequences)
-        print(f"Nombre de valeurs uniques: {len(unique_vals)}")
+        print(f"Number of unique values: {len(unique_vals)}")
         if len(unique_vals) < 20:
-            print(f"Valeurs uniques: {unique_vals}")
+            print(f"Unique values: {unique_vals}")
         
-        print("\n4. TEST DE RÉALISME:")
+        print("\n4. REALISM TEST:")
         print("=" * 50)
         
-        # Prendre un échantillon aléatoire
+        # Take a random sample
         sample_seq = sequences[np.random.randint(0, len(sequences))]
-        print("Séquence échantillon (premières 10 valeurs du premier canal):")
+        print("Sample sequence (first 10 values of first channel):")
         print(sample_seq[:10, 0])
         
-        # Vérifier la variance temporelle
-        temporal_variance = np.var(sequences, axis=1)  # Variance le long du temps
+        # Check temporal variance
+        temporal_variance = np.var(sequences, axis=1)  # Variance along time
         avg_temporal_var = np.mean(temporal_variance)
-        print(f"\nVariance temporelle moyenne: {avg_temporal_var:.6f}")
+        print(f"\nAverage temporal variance: {avg_temporal_var:.6f}")
         
         if avg_temporal_var < 0.01:
-            print("  ATTENTION: Variance temporelle très faible!")
-            print("   Les séquences pourraient être trop constantes.")
+            print("  WARNING: Very low temporal variance!")
+            print("   Sequences might be too constant.")
         
         print("\n5. SCALER INFORMATION:")
         print("=" * 50)
         print(f"Scaler mean: {scaler_seq.mean_}")
         print(f"Scaler scale: {scaler_seq.scale_}")
         
-        # Vérifier si le scaler a des scales très petits (problème de division)
+        # Check if scaler has very small scales (division problem)
         if np.any(scaler_seq.scale_ < 1e-6):
-            print(" PROBLÈME: Certains scales sont presque nuls!")
+            print(" PROBLEM: Some scales are almost zero!")
             problematic_indices = np.where(scaler_seq.scale_ < 1e-6)[0]
             for idx in problematic_indices:
-                print(f"  Canal {channels[idx]}: scale={scaler_seq.scale_[idx]}")
+                print(f"  Channel {channels[idx]}: scale={scaler_seq.scale_[idx]}")
         
     except Exception as e:
-        print(f"Erreur lors du diagnostic: {e}")
+        print(f"Diagnostic error: {e}")
 
 def check_data_generation_process():
-    """Vérifie le processus de génération des données"""
-    print("\n VÉRIFICATION DU PROCESSUS DE GÉNÉRATION")
+    """Verifies the data generation process"""
+    print("\n DATA GENERATION PROCESS VERIFICATION")
     print("=" * 60)
     
-    # Vérifier si on utilise des données simulées
+    # Check if we're using simulated data
     simulated_path = os.path.join(PROJECT_ROOT, "data", "dataset", "simulated_base_data.csv")
     if os.path.exists(simulated_path):
-        print("  UTILISATION DE DONNÉES SIMULÉES DÉTECTÉE")
+        print("  SIMULATED DATA USAGE DETECTED")
         df_sim = pd.read_csv(simulated_path)
-        print(f"Fichier: {simulated_path}")
+        print(f"File: {simulated_path}")
         print(f"Shape: {df_sim.shape}")
         
-        # Analyser la qualité des données simulées
-        print("\nQualité des données simulées:")
+        # Analyze simulated data quality
+        print("\nSimulated data quality:")
         for col in ['V_batt', 'I_batt', 'T_batt']:
             if col in df_sim.columns:
                 unique_ratio = df_sim[col].nunique() / len(df_sim)
-                print(f"  {col}: {df_sim[col].nunique()} valeurs uniques ({unique_ratio:.1%})")
+                print(f"  {col}: {df_sim[col].nunique()} unique values ({unique_ratio:.1%})")
 
 if __name__ == "__main__":
     diagnose_normalization_issue()

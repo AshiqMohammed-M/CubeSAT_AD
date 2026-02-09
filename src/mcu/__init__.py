@@ -1,5 +1,5 @@
 """
-Module MCU - Système embarqué EPS GUARDIAN
+MCU Module - EPS GUARDIAN Embedded System
 """
 
 from mcu_rule_engine import MCU_RuleEngine
@@ -10,7 +10,7 @@ from mcu_logger import setup_logger
 
 __version__ = "1.0.0"
 __author__ = "EPS GUARDIAN Team"
-__description__ = "Système de détection d'anomalies pour microcontrôleur ESP32"
+__description__ = "Anomaly detection system for ESP32 microcontroller"
 
 __all__ = [
     'MCU_RuleEngine',

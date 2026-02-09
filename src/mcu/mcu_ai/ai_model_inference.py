@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Système d'inférence IA pour EPS GUARDIAN - VERSION CORRIGÉE
+AI Inference System for EPS GUARDIAN - CORRECTED VERSION
 """
-
+#completed
 import tensorflow as tf
 import numpy as np
 import os
@@ -24,54 +24,54 @@ class AIModelInference:
         self.thresholds = None
         self.inference_results = []
         
-        print("AIModelInference initialisé")
+        print("AIModelInference initialized")
     
     def load_artifacts(self):
-        """Charge tous les artefacts IA"""
+        """Load all AI artifacts"""
         try:
-            # Charger le scaler
+            # Load the scaler
             scaler_path = os.path.join(self.training_dir, "ai_scaler.pkl")
             self.scaler = joblib.load(scaler_path)
             
-            # Charger les noms des features
+            # Load feature names
             features_path = os.path.join(self.training_dir, "ai_feature_names.npy")
             self.feature_names = np.load(features_path, allow_pickle=True).tolist()
             
-            # Charger les seuils
+            # Load thresholds
             thresholds_path = os.path.join(self.model_dir, "ai_thresholds.json")
             with open(thresholds_path, 'r') as f:
                 thresholds_data = json.load(f)
                 self.thresholds = thresholds_data["thresholds"]
             
-            # Charger le modèle TFLite
+            # Load the TFLite model
             tflite_path = os.path.join(self.model_dir, "ai_autoencoder.tflite")
             self.interpreter = tf.lite.Interpreter(model_path=tflite_path)
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
             
-            print("Tous les artefacts chargés avec succès")
+            print("All artifacts loaded successfully")
             return True
             
         except Exception as e:
-            print(f"Erreur chargement artefacts: {e}")
+            print(f"Error loading artifacts: {e}")
             return False
     
     def predict_from_normalized(self, normalized_features):
-        """Prédiction directe avec features déjà normalisées"""
+        """Direct prediction with already normalized features"""
         try:
-            # Préparer l'input
+            # Prepare input
             input_data = normalized_features.astype(np.float32)
             
-            # Exécuter l'inférence
+            # Run inference
             self.interpreter.set_tensor(self.input_details[0]['index'], input_data)
             self.interpreter.invoke()
             output_data = self.interpreter.get_tensor(self.output_details[0]['index'])
             
-            # Calculer l'erreur de reconstruction
+            # Calculate reconstruction error
             reconstruction_error = np.mean(np.square(input_data - output_data))
             
-            # Déterminer le niveau d'anomalie
+            # DDetermine anomaly level
             anomaly_level = "NORMAL"
             if reconstruction_error >= self.thresholds["critical"]:
                 anomaly_level = "CRITICAL"
@@ -81,35 +81,35 @@ class AIModelInference:
             return reconstruction_error, anomaly_level
             
         except Exception as e:
-            print(f"Erreur prédiction: {e}")
+            print(f"Prediction error: {e}")
             return None, None
     
     def test_real_scenarios(self):
-        """Test avec des données RÉELLES du dataset d'entraînement"""
+        """Test with REAL data from the training dataset"""
         try:
-            # Charger les données d'entraînement normalisées
+            # Load normalized training data
             train_data_path = os.path.join(self.training_dir, "ai_train_data.npy")
             X_train = np.load(train_data_path)
             
-            print(f"Données d'entraînement chargées: {X_train.shape}")
+            print(f"Training data loaded: {X_train.shape}")
             
-            # Tester quelques échantillons réels
-            test_indices = [0, 100, 500, 1000, 2000]  # Différents échantillons
+            # Test some real samples
+            test_indices = [0, 100, 500, 1000, 2000]  # Different samples
             
             for i, idx in enumerate(test_indices):
                 if idx < len(X_train):
-                    sample = X_train[idx:idx+1]  # Prendre un échantillon
+                    sample = X_train[idx:idx+1]  # Take a sample
                     
-                    # Faire la prédiction
+                    # Make prediction
                     error, level = self.predict_from_normalized(sample)
                     
                     if error is not None:
-                        print(f"\nTest {i+1} (échantillon {idx}):")
-                        print(f"  Erreur reconstruction: {error:.6f}")
-                        print(f"  Niveau anomalie: {level}")
-                        print(f"  Seuils: Normal<{self.thresholds['normal']:.6f}")
+                        print(f"\nTest {i+1} (sample {idx}):")
+                        print(f"  Reconstruction error: {error:.6f}")
+                        print(f"  Anomaly level: {level}")
+                        print(f"  Thresholds: Normal<{self.thresholds['normal']:.6f}")
                         
-                        # Sauvegarder le résultat
+                        # Save the result
                         result = {
                             "timestamp": datetime.now().isoformat(),
                             "sample_index": idx,
@@ -122,22 +122,22 @@ class AIModelInference:
             return True
             
         except Exception as e:
-            print(f"Erreur test scénarios réels: {e}")
+            print(f"Error testing real-world scenarios: {e}")
             return False
     
     def test_synthetic_normal(self):
-        """Test avec des données synthétiques NORMALES"""
+        """Test with SYNTHETIC NORMAL data"""
         try:
-            # Créer des features normalisées typiques (proches de la moyenne)
+            # Create typical normalized features (close to the mean)
             normal_features = np.random.normal(0.5, 0.1, (1, len(self.feature_names)))
-            normal_features = np.clip(normal_features, 0, 1)  # Garder entre 0 et 1
+            normal_features = np.clip(normal_features, 0, 1)  # Keep between 0 and 1
             
             error, level = self.predict_from_normalized(normal_features)
             
             if error is not None:
-                print(f"\nTest SYNTHETIQUE NORMAL:")
-                print(f"  Erreur reconstruction: {error:.6f}")
-                print(f"  Niveau anomalie: {level}")
+                print(f"\nTest SYNTHETIC NORMAL:")
+                print(f"  Reconstruction error: {error:.6f}")
+                print(f"  Anomaly level: {level}")
                 
                 result = {
                     "timestamp": datetime.now().isoformat(),
@@ -151,11 +151,11 @@ class AIModelInference:
             return True
             
         except Exception as e:
-            print(f"Erreur test synthétique: {e}")
+            print(f"Error testing synthetic data: {e}")
             return False
     
     def save_results(self):
-        """Sauvegarde tous les résultats"""
+        """Save all results """
         try:
             # CSV
             csv_path = os.path.join(self.output_dir, "ai_inference_summary.csv")
@@ -167,35 +167,35 @@ class AIModelInference:
             with open(json_path, 'w') as f:
                 json.dump(self.inference_results, f, indent=2)
             
-            print(f"\nRésultats sauvegardés:")
+            print(f"\nRResults saved:")
             print(f"  - CSV: {csv_path}")
             print(f"  - JSON: {json_path}")
             
         except Exception as e:
-            print(f"Erreur sauvegarde: {e}")
+            print(f"Error saving results: {e}")
 
 def main():
     inference = AIModelInference()
     
     if inference.load_artifacts():
-        print("\nSYSTEME D'INFERENCE IA PRET")
+        print("\nAI INFERENCE SYSTEM READY")
         print("=" * 40)
         
-        # 1. Test avec données RÉELLES d'entraînement
-        print("\n1. TESTS AVEC DONNEES REELLES:")
+        # 1. Test with REAL training data
+        print("\n1. TESTS WITH REAL DATA:")
         inference.test_real_scenarios()
         
-        # 2. Test avec données synthétiques
-        print("\n2. TESTS AVEC DONNEES SYNTHETIQUES:")
+        # 2. Test with SYNTHETIC data
+        print("\n2. TESTS WITH SYNTHETIC DATA:")
         inference.test_synthetic_normal()
         
-        # 3. Sauvegarde
+        # 3. Save results
         inference.save_results()
         
-        print("\nTests d'inference termines avec succes!")
+        print("\nInference tests completed successfully!")
         
     else:
-        print("Impossible de charger les artefacts IA")
+        print("Unable to load AI artifacts")
 
 if __name__ == "__main__":
     main()

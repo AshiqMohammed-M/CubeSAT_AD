@@ -3,12 +3,12 @@ import numpy as np
 import os
 import json
 from datetime import datetime
-
+#completed
 class AIModelConverter:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         self.model_dir = os.path.join(self.base_dir, "data", "ai_models", "model_simple")
-        self.training_dir = os.path.join(self.base_dir, "data", "training_data")  # ← NOUVEAU CHEMIN
+        self.training_dir = os.path.join(self.base_dir, "data", "training_data")  # ← NEW PATH
         self.output_dir = os.path.join(self.base_dir, "data", "ai_models", "esp32_deployment")
         os.makedirs(self.output_dir, exist_ok=True)
     
@@ -18,27 +18,27 @@ class AIModelConverter:
             with open(tflite_path, 'rb') as f:
                 self.model_data = f.read()
             self.model_size_kb = len(self.model_data) / 1024
-            print(f"Modèle TFLite chargé: {self.model_size_kb:.1f} KB")
+            print(f"TFLite model loaded: {self.model_size_kb:.1f} KB")
             return True
         except Exception as e:
-            print(f"Erreur chargement modèle TFLite: {e}")
+            print(f"Error loading TFLite model: {e}")
             return False
     
     def load_model_metadata(self):
         try:
-            # Charger les seuils depuis model_simple
+            # Load thresholds from model_simple
             thresholds_path = os.path.join(self.model_dir, "ai_thresholds.json")
             with open(thresholds_path, 'r') as f:
                 thresholds_data = json.load(f)
                 self.thresholds = thresholds_data["thresholds"]
             
-            # CORRIGÉ : Charger les noms de features depuis training_data
-            features_path = os.path.join(self.training_dir, "ai_feature_names.npy")  # ← CHEMIN CORRIGÉ
+            # CORRECTED: Load feature names from training_data
+            features_path = os.path.join(self.training_dir, "ai_feature_names.npy")  # ← CORRECTED PATH
             self.feature_names = np.load(features_path, allow_pickle=True).tolist()
-            print(f"Metadata chargée: {len(self.feature_names)} features")
+            print(f"Metadata loaded: {len(self.feature_names)} features")
             return True
         except Exception as e:
-            print(f"Erreur chargement metadata: {e}")
+            print(f"Error loading metadata: {e}")
             return False
     
     def generate_c_header(self):
@@ -64,7 +64,7 @@ constexpr float NORMAL_THRESHOLD = {self.thresholds['normal']:.6f}f;
 constexpr float WARNING_THRESHOLD = {self.thresholds['warning']:.6f}f;
 constexpr float CRITICAL_THRESHOLD = {self.thresholds['critical']:.6f}f;
 
-// Features utilisées par le modèle
+// Features used by the model
 constexpr int NUM_FEATURES = {len(self.feature_names)};
 const char* FEATURE_NAMES[] = {{
     {', '.join(f'"{name}"' for name in self.feature_names)}
@@ -81,7 +81,7 @@ const char* FEATURE_NAMES[] = {{
             print(f"Header C++ généré: {header_path}")
             return header_path
         except Exception as e:
-            print(f"Erreur génération header: {e}")
+            print(f"Error generating header: {e}")
             return None
     
     def generate_arduino_example(self):
@@ -145,19 +145,19 @@ void setup() {{
     Serial.begin(115200);
     while (!Serial);
     
-    Serial.println("Initialisation EPS Guardian AI...");
-    Serial.print("Taille modèle: ");
+    Serial.println("Initializing EPS Guardian AI...");
+    Serial.print("Model size: ");
     Serial.print(eps_guardian::ai_model::g_ai_model_size);
     Serial.println(" bytes");
     
     if (!guardianAI.initialize()) {{
-        Serial.println("ERREUR: Initialisation IA échouée");
+        Serial.println("ERROR: AI initialization failed");
         return;
     }}
-    Serial.println("EPS Guardian AI initialisé avec succès");
+    Serial.println("EPS Guardian AI initialized successfully");
     
-    // Afficher les features utilisées
-    Serial.println("Features utilisées:");
+    // Display used features
+    Serial.println("Features used:");
     for (int i = 0; i < {len(self.feature_names)}; i++) {{
         Serial.print("  ");
         Serial.print(i);
@@ -167,7 +167,7 @@ void setup() {{
 }}
 
 void loop() {{
-    // Données capteurs simulées (normalisées)
+    // Simulated sensor data (normalized)
     float sensor_data[{len(self.feature_names)}] = {{
         0.5, 0.5, 0.5, 0.5, 0.5,  // V_batt, I_batt, T_batt, V_bus, I_bus
         0.5, 0.5, 0.5, 0.5, 0.5,  // V_solar, I_solar, SOC, T_eps, P_batt
@@ -178,13 +178,13 @@ void loop() {{
     float error = guardianAI.detectAnomaly(sensor_data);
     
     if (error < 0) {{
-        Serial.println("ERREUR: Inference échouée");
+        Serial.println("ERROR: Inference failed");
     }} else {{
         int level = guardianAI.getAnomalyLevel(error);
         
-        Serial.print("Erreur reconstruction: ");
+        Serial.print("Reconstruction error: ");
         Serial.print(error, 6);
-        Serial.print(" | Niveau anomalie: ");
+        Serial.print(" | Anomaly level: ");
         
         switch(level) {{
             case 0: Serial.println("NORMAL"); break;
@@ -199,17 +199,17 @@ void loop() {{
             arduino_path = os.path.join(self.output_dir, "eps_guardian_esp32.ino")
             with open(arduino_path, 'w') as f:
                 f.write(arduino_content)
-            print(f"Exemple Arduino généré: {arduino_path}")
+            print(f"Arduino example generated: {arduino_path}")
             return arduino_path
         except Exception as e:
-            print(f"Erreur génération Arduino: {e}")
+            print(f"Error generating Arduino example: {e}")
             return None
     
     def run_conversion(self):
-        print("Conversion pour ESP32...")
-        print(f"Dossier modèles: {self.model_dir}")
-        print(f"Dossier données: {self.training_dir}")  # ← AJOUT
-        print(f"Dossier sortie: {self.output_dir}")
+        print("Conversion for ESP32...")
+        print(f"Model directory: {self.model_dir}")
+        print(f"Training directory: {self.training_dir}")  # ← AJOUT
+        print(f"Output directory: {self.output_dir}")
         
         if not self.load_tflite_model():
             return False
@@ -221,8 +221,8 @@ void loop() {{
         arduino_path = self.generate_arduino_example()
         
         if header_path and arduino_path:
-            print("Conversion réussie!")
-            print(f"Fichiers générés dans: {self.output_dir}")
+            print("Successful conversion!")
+            print(f"Files generated in: {self.output_dir}")
             return True
         return False
 
@@ -231,12 +231,12 @@ def main():
     success = converter.run_conversion()
     
     if success:
-        print(" Modèle prêt pour déploiement ESP32!")
-        print(" Fichiers créés:")
-        print("   - eps_guardian_ai_model.h (Header C++)")
-        print("   - eps_guardian_esp32.ino (Exemple Arduino)")
+        print(" Model ready for ESP32 deployment!")
+        print(" Files created:")
+        print("   - eps_guardian_ai_model.h (C++ Header)")
+        print("   - eps_guardian_esp32.ino (Arduino Example)")
     else:
-        print("Conversion échouée")
+        print("Conversion failed")
 
 if __name__ == "__main__":
     main()

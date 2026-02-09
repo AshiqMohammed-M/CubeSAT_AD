@@ -8,8 +8,8 @@ import os
 import sys
 import math
 
-# === CONFIGURATION CORRIGÉE DES CHEMINS ===
-BASE_DIR = r"D:\Challenge AESS&IES"
+# === CORRECTED PATH CONFIGURATION ===
+BASE_DIR = r"D:\final_year_project\Cubesat_AD"
 DATA_DIR = os.path.join(BASE_DIR, "data")
 ANALYSE_DIR = os.path.join(DATA_DIR, "analyse")
 VISUALIZATIONS_DIR = os.path.join(ANALYSE_DIR, "visualizations")
@@ -17,29 +17,29 @@ DATASET_DIR = os.path.join(DATA_DIR, "dataset")
 DATA_TRAIN_DIR = os.path.join(DATA_DIR, "data_train")
 LOGS_DIR = os.path.join(DATA_DIR, "logs")
 
-# Configuration du logging - UNIQUEMENT CONSOLE
+# Logging configuration - CONSOLE ONLY
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]  # SUPPRIMER FileHandler
+    handlers=[logging.StreamHandler(sys.stdout)]  # REMOVE FileHandler
 )
 
 logger = logging.getLogger(__name__)
 
 class ProEPSSensorDataGenerator:
-    """Generateur de donnees pour systeme EPS de CubeSat"""
+    """Data generator for a CubeSat EPS (Electrical Power System)"""
     
     def __init__(self, random_seed=42):
         np.random.seed(random_seed)
         random.seed(random_seed)
         
-        # Configuration des capteurs
+        # Sensor configuration
         self.expected_cols = [
             'timestamp', 'V_batt', 'I_batt', 'T_batt', 'V_solar', 'I_solar',
             'V_bus', 'I_bus', 'T_eps', 'SOC', 'anomaly_type', 'orbit_sunlight'
         ]
         
-        # Plages NORMALES des capteurs
+        # Normal sensor ranges
         self.normal_ranges = {
             'V_batt': (7.2, 8.4),
             'I_batt': (-2.5, 2.5),
@@ -52,7 +52,7 @@ class ProEPSSensorDataGenerator:
             'SOC': (15, 95)
         }
         
-        # Etat du systeme
+        # System state
         self.system_state = {
             'battery_health': 1.0,
             'solar_efficiency': 1.0,
@@ -67,17 +67,17 @@ class ProEPSSensorDataGenerator:
             'thermal_history_eps': []
         }
         
-        # Configuration des chemins CORRIGÉE
+        # CORRECTED path configuration
         self.data_dir = DATASET_DIR
         self.output_dir = VISUALIZATIONS_DIR
         self.logs_dir = LOGS_DIR
         self.rejected_samples = 0
         self.start_time = None
         
-        logger.info("Generateur EPS initialise")
+        logger.info("EPS generator initialized")
 
     def _simulate_orbit_physics(self, timestamp):
-        """Simule la physique orbitale"""
+        """Simulate orbital physics"""
         orbit_period = 90 * 60
         total_seconds = timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second
         orbit_progress = (total_seconds % orbit_period) / orbit_period
@@ -95,7 +95,7 @@ class ProEPSSensorDataGenerator:
         return in_sunlight, load_variation, thermal_variation
 
     def _add_stochastic_noise(self, data_dict):
-        """Ajoute un bruit stochastique"""
+        """Adds stochastic noise"""
         noise_config = {
             'V_batt': (0, 0.015),
             'I_batt': (0, 0.02),
@@ -122,7 +122,7 @@ class ProEPSSensorDataGenerator:
         return data_dict
 
     def _simulate_thermal_lag(self, current_temp, thermal_variation, mass_type='batt'):
-        """Simule le retard thermique"""
+        """Simulates thermal delay"""
         thermal_mass = self.system_state['thermal_mass_batt'] if mass_type == 'batt' else self.system_state['thermal_mass_eps']
         lag_factor = 0.8 if mass_type == 'eps' else 1.0
         
@@ -143,22 +143,22 @@ class ProEPSSensorDataGenerator:
         return lagged_temp
 
     def _check_data_quality(self, data_dict):
-        """Verifie la qualite physique des donnees generees"""
+        """Verifies the physical quality of the generated data"""
         issues = []
         
         has_nan = any(pd.isna(v) for v in data_dict.values())
         
         checks = [
             (data_dict.get('V_batt', 0) < 5.5 or data_dict.get('V_batt', 0) > 8.6, 
-             f"V_batt hors limites: {data_dict.get('V_batt', 'NaN')}V"),
+             f"V_batt out of range: {data_dict.get('V_batt', 'NaN')}V"),
             (data_dict.get('T_batt', 0) < -25 or data_dict.get('T_batt', 0) > 85, 
-             f"T_batt hors limites: {data_dict.get('T_batt', 'NaN')}°C"),
+             f"T_batt out of range: {data_dict.get('T_batt', 'NaN')}°C"),
             (data_dict.get('SOC', 0) < 0 or data_dict.get('SOC', 0) > 105, 
-             f"SOC hors limites: {data_dict.get('SOC', 'NaN')}%"),
+             f"SOC out of range: {data_dict.get('SOC', 'NaN')}%"),
             (abs(data_dict.get('I_batt', 0)) > 3.0,
-             f"I_batt excessif: {data_dict.get('I_batt', 'NaN')}A"),
+             f"I_batt excessive: {data_dict.get('I_batt', 'NaN')}A"),
             (data_dict.get('I_bus', 0) < 0,
-             f"I_bus negatif: {data_dict.get('I_bus', 'NaN')}A")
+             f"I_bus negative: {data_dict.get('I_bus', 'NaN')}A")
         ]
         
         for check, message in checks:
@@ -169,7 +169,7 @@ class ProEPSSensorDataGenerator:
         return len(issues) == 0
 
     def generate_normal_data(self, timestamp):
-        """Genere des donnees EPS normales"""
+        """Generates normal EPS data"""
         try:
             in_sunlight, load_variation, thermal_variation = self._simulate_orbit_physics(timestamp)
             
@@ -230,11 +230,11 @@ class ProEPSSensorDataGenerator:
             return data
             
         except Exception as e:
-            logger.error(f"Erreur generation donnees: {e}")
+            logger.error(f"Data generation error: {e}")
             return None
 
     def generate_anomaly(self, base_data, anomaly_type):
-        """Genere differents types d'anomalies"""
+        """Generates different types of anomalies"""
         data = base_data.copy()
         data['anomaly_type'] = anomaly_type
         
@@ -318,7 +318,7 @@ class ProEPSSensorDataGenerator:
         return data
 
     def simulate_system_degradation(self, cycles):
-        """Simule la degradation progressive du systeme"""
+        """Simulates the progressive degradation of the system"""
         degradation_factors = {
             'battery_health': 0.9997,
             'solar_efficiency': 0.9999, 
@@ -335,8 +335,8 @@ class ProEPSSensorDataGenerator:
         self.system_state['degradation_cycles'] += cycles
 
     def generate_dataset(self, num_normal=5000, num_anomalies=1000, duration_hours=24, low_res=False):
-        """Genere un dataset complet"""
-        logger.info(f"Generation dataset: {num_normal} normaux, {num_anomalies} anomalies")
+        """Generate a complete dataset"""
+        logger.info(f"Generating dataset: {num_normal} normal, {num_anomalies} anomalies")
         
         if low_res:
             num_normal = min(num_normal, 500)
@@ -365,7 +365,7 @@ class ProEPSSensorDataGenerator:
             'unknown_pattern': 0.02
         }
         
-        # Generation donnees normales
+        # Generating normal data
         normal_generated = 0
         max_attempts = num_normal * 3
         attempts = 0
@@ -385,9 +385,9 @@ class ProEPSSensorDataGenerator:
                 self.simulate_system_degradation(1)
     
         if normal_generated < num_normal:
-            logger.warning(f"Seulement {normal_generated}/{num_normal} echantillons generes")
+            logger.warning(f"Only {normal_generated}/{num_normal} normal samples generated")
         
-        # Generation anomalies
+        # Generating anomalies
         total_anomalies_generated = 0
         
         for anomaly_type, percentage in anomaly_distribution.items():
@@ -416,48 +416,48 @@ class ProEPSSensorDataGenerator:
         
         random.shuffle(dataset)
         
-        logger.info(f"Dataset genere: {len(dataset)} echantillons valides")
-        logger.info(f"Normaux: {normal_generated}, Anomalies: {total_anomalies_generated}, Rejetes: {self.rejected_samples}")
+        logger.info(f"Dataset generated: {len(dataset)} valid samples")
+        logger.info(f"Normal: {normal_generated}, Anomalies: {total_anomalies_generated}, Rejected: {self.rejected_samples}")
         
         return pd.DataFrame(dataset)
 
     def calculate_derived_features(self, df):
-        """Calcule les features derivees pour l'IA"""
+        """Calculate derived features for AI"""
         try:
-            logger.info("Calcul des features derivees...")
+            logger.info("Calculating derived features...")
             
             df = df.sort_values('timestamp').reset_index(drop=True)
             
-            # Features de puissance
+            # Power features
             df['P_batt'] = df['V_batt'] * df['I_batt']
             df['P_solar'] = ((df['V_solar'] * df['I_solar']).clip(lower=0, upper=40))
             df['P_bus'] = df['V_bus'] * df['I_bus']
             
-            # Ratios systeme
+            # System ratios
             df['converter_ratio'] = np.where(
                 df['V_solar'] > 0.1,
                 df['V_bus'] / df['V_solar'],
                 0
             )
             
-            # Efficacites
+            # Efficiencies
             df['charge_efficiency'] = np.where(
                 (df['I_batt'] > 0) & (df['P_solar'] > 0.1),
                 df['P_batt'] / df['P_solar'],
                 0
             )
             
-            # Derivees temporelles
+            # Temporal derivatives
             time_cols = ['V_batt', 'I_batt', 'T_batt', 'V_bus', 'I_bus', 'SOC']
             for col in time_cols:
                 df[f'delta_{col}'] = df[col].diff().fillna(0)
                 
-            # Statistiques glissantes
+            # Rolling statistics
             for col in ['V_batt', 'I_batt', 'T_batt']:
                 df[f'rolling_std_{col}'] = df[col].rolling(window=10, min_periods=1).std().fillna(0)
                 df[f'rolling_mean_{col}'] = df[col].rolling(window=10, min_periods=1).mean().fillna(df[col])
             
-            # Ratios de coherence
+            # Coherence ratios
             df['V_batt_V_bus_ratio'] = np.where(
                 df['V_bus'] > 0.1,
                 df['V_batt'] / df['V_bus'],
@@ -465,15 +465,15 @@ class ProEPSSensorDataGenerator:
             )
             df['power_balance'] = df['P_solar'] - df['P_batt'] - df['P_bus']
             
-            logger.info("Features derivees calculees avec succes")
+            logger.info("Derived features calculated successfully")
             return df
             
         except Exception as e:
-            logger.error(f"Erreur calcul features: {e}")
+            logger.error(f"Feature calculation error: {e}")
             return df
 
     def save_dataset(self, df, filename="pro_eps_dataset.csv"):
-        """Sauvegarde le dataset avec metadonnees"""
+        """Save the dataset with metadata"""
         try:
             missing_cols = [col for col in self.expected_cols if col not in df.columns]
             
@@ -504,15 +504,15 @@ class ProEPSSensorDataGenerator:
             with open(metadata_file, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
             
-            logger.info(f"Dataset sauvegarde: {file_path}")
+            logger.info(f"Dataset backup: {file_path}")
             
-            print(f"\nSynthese dataset:")
-            print(f"   Echantillons valides: {len(df)}")
-            print(f"   Qualite donnees: {metadata['data_quality']['physical_consistency']}")
-            print(f"   Anomalies rejetees: {self.rejected_samples}")
+            print(f"\nDataset summary:")
+            print(f"   Valid samples: {len(df)}")
+            print(f"   Data quality: {metadata['data_quality']['physical_consistency']}")
+            print(f"   Rejected anomalies: {self.rejected_samples}")
             
             return metadata
             
         except Exception as e:
-            logger.error(f"Erreur sauvegarde: {e}")
+            logger.error(f"Save error: {e}")
             return None

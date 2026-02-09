@@ -1,6 +1,6 @@
 """
-Package IA du système OBC
-Contient les modèles d'apprentissage automatique pour l'analyse avancée
+OBC System AI Package
+Contains machine learning models for advanced analytics
 """
 
 from .ai_complex_inference import OBC_AI, obc_ai, analyze_sensor_sequence

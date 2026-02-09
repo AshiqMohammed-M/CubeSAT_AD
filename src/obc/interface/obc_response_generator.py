@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-GÉNÉRATEUR DE RÉPONSES OBC
-Crée les réponses structurées pour le MCU
+OBC RESPONSE GENERATOR
+Creates structured responses for the MCU
 """
-
+#completed
 import json
 import logging
 from datetime import datetime
@@ -12,19 +12,19 @@ class OBCResponseGenerator:
     def __init__(self):
         self.logger = logging.getLogger("OBC_ResponseGenerator")
         self.response_counter = 0
-        self.logger.info("Initialisation du générateur de réponses OBC")
+        self.logger.info("Initializing the OBC response generator")
 
     def generate_response(self, original_message, ai_analysis, decision_data):
         """
-        Génère une réponse structurée pour le MCU
+        Generates a structured response for the MCU
         
         Args:
-            original_message: Message original du MCU
-            ai_analysis: Résultat de l'analyse IA
-            decision_data: Données de décision
+            original_message: Original message from the MCU
+            ai_analysis: Result of the AI analysis
+            decision_data: Decision data
             
         Returns:
-            dict: Réponse JSON structurée
+            dict: Structured JSON response
         """
         self.response_counter += 1
         
@@ -56,11 +56,11 @@ class OBCResponseGenerator:
             }
         }
         
-        self.logger.info(f"Réponse #{self.response_counter} générée: {decision_data['decision']}")
+        self.logger.info(f"Answer #{self.response_counter} generated: {decision_data['decision']}")
         return response
 
     def _determine_priority(self, decision):
-        """Détermine la priorité basée sur la décision"""
+        """DDetermines priority based on the decision"""
         priority_map = {
             "CONFIRM": "HIGH",
             "ISOLATE": "CRITICAL", 
@@ -72,7 +72,7 @@ class OBCResponseGenerator:
         return priority_map.get(decision, "MEDIUM")
 
     def generate_heartbeat(self):
-        """Génère un message heartbeat de l'OBC"""
+        """Generates a heartbeat message from the OBC"""
         heartbeat = {
             "header": {
                 "message_id": self.response_counter + 1,
@@ -90,11 +90,11 @@ class OBCResponseGenerator:
             }
         }
         
-        self.logger.debug("Heartbeat OBC généré")
+        self.logger.debug("Heartbeat OBC generated")
         return heartbeat
 
     def generate_error_response(self, original_message, error_description):
-        """Génère une réponse d'erreur"""
+        """Generates an error response"""
         self.response_counter += 1
         
         error_response = {
@@ -115,8 +115,8 @@ class OBCResponseGenerator:
             }
         }
         
-        self.logger.error(f"Réponse d'erreur générée: {error_description}")
+        self.logger.error(f"Error response generated: {error_description}")
         return error_response
 
-# Instance globale
+# Global instance
 response_generator = OBCResponseGenerator()

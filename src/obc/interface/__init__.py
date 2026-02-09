@@ -1,6 +1,6 @@
 """
-Package Interface du système OBC
-Gestion de la communication MCU ↔ OBC
+OBC System Interface Package
+MCU ↔ OBC Communication Management
 """
 
 from .obc_message_handler import OBCMessageHandler, message_handler, process_incoming_message

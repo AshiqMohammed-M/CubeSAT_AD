@@ -1,3 +1,4 @@
+#completed
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -13,16 +14,16 @@ import json
 warnings.filterwarnings('ignore')
 
 # ======================
-# CONFIGURATION DE PRODUCTION
+# PRODUCTION CONFIGURATION
 # ======================
 class ProductionConfig:
-    BASE_PATH = "D:/Challenge AESS&IES"
+    BASE_PATH = "D:/final_year_project/Cubesat_AD"
     
-    # Chemins des données
+    # Data paths
     MCU_DATASET_PATH = f"{BASE_PATH}/data/dataset/pro_eps_dataset.csv"
     OBC_DATASET_PATH = f"{BASE_PATH}/data/dataset/pro_eps_extended.csv"
     
-    # Chemins des modèles
+    # Model paths
     MCU_MODEL_PATHS = [
         f"{BASE_PATH}/data/ai_models/model_simple/ai_autoencoder.h5",
     ]
@@ -30,24 +31,24 @@ class ProductionConfig:
     OBC_MODEL_PATH = f"{BASE_PATH}/data/ai_models/model_complex/ai_model_lstm_autoencoder.h5"
     OUTPUT_DIR = f"{BASE_PATH}/output_system_test"
     
-    # SEUILS DE PRODUCTION (optimisés par calibration)
-    THRESHOLD_MCU_AE = 213.11    # Seuil optimal calibré
-    THRESHOLD_OBC_AE = 143.82    # Seuil optimal calibré
+    # PRODUCTION THRESHOLDS (calibrated)
+    THRESHOLD_MCU_AE = 213.11    # Calibrated optimal threshold
+    THRESHOLD_OBC_AE = 143.82    # Calibrated optimal threshold
     
-    # RÈGLES DE SÉCURITÉ (assouplies pour production)
+    # SAFETY RULES (relaxed for production)
     RULE_TEMP_CRITICAL = 75.0
     RULE_CURRENT_CRITICAL = 4.0
     RULE_VOLTAGE_CRITICAL = 3.5
     
-    # CONFIGURATION SYSTÈME
+    # SYSTEM CONFIGURATION
     SAMPLE_SIZE = 300
     WINDOW_SIZE = 30
-    OBC_CALL_PROBABILITY = 0.05  # Réduit pour production
+    OBC_CALL_PROBABILITY = 0.05  # Reduced for production
 
 # ======================
-# SYSTÈME DE PRODUCTION
+# PRODUCTION SYSTEM
 # ======================
-print("SYSTÈME HYBRIDE MCU + OBC - VERSION DE PRODUCTION")
+print("HYBRID MCU + OBC SYSTEM - PRODUCTION VERSION")
 print("=" * 60)
 
 class ProductionMCU:
@@ -56,34 +57,34 @@ class ProductionMCU:
         self.threshold = threshold
         self.model = None
         self.model_loaded = False
-        self.expected_features = 18  # Votre modèle a 18 features
+        self.expected_features = 18  # Your model has 18 features
         
-        # État système
+        # System state
         self.prev_v_batt = 7.4
         self.prev_t_batt = 35.0
         
         self.load_production_model()
     
     def load_production_model(self):
-        """Charge le modèle pour la production"""
+        """Load model for production"""
         try:
             self.model = tf.keras.models.load_model(self.model_path, compile=False)
             self.model_loaded = True
-            print(f" Modèle MCU chargé: {os.path.basename(self.model_path)}")
-            print(f"   - Seuil de production: {self.threshold}")
+            print(f" MCU model loaded: {os.path.basename(self.model_path)}")
+            print(f"   - Production threshold: {self.threshold}")
         except Exception as e:
-            print(f" Erreur chargement modèle: {e}")
+            print(f" Error loading model: {e}")
             self.model_loaded = False
     
     def prepare_production_features(self, sample):
-        """Prépare les features pour l'inférence de production"""
+        """Prepare features for production inference"""
         v_batt, i_batt, t_batt, v_bus, i_bus, v_solar, i_solar = sample[:7]
         
-        # Calcul des deltas
+        # Calculate deltas
         delta_v_batt = v_batt - self.prev_v_batt
         delta_t_batt = t_batt - self.prev_t_batt
         
-        # 18 features comme attendu par votre modèle
+        # 18 features as expected by your model
         features = [
             v_batt, i_batt, t_batt,
             v_bus, i_bus, 
@@ -95,22 +96,22 @@ class ProductionMCU:
             v_bus * i_bus,                      # P_bus
             v_solar * i_solar,                  # P_solar
             abs(i_batt),                        # |I_batt|
-            v_batt / 7.4 if 7.4 > 0 else 0,     # ratio tension
-            t_batt / 35.0 if 35.0 > 0 else 0,   # ratio température
-            delta_v_batt * 10,                  # delta_V amplifié
-            delta_t_batt * 2                    # delta_T amplifié
+            v_batt / 7.4 if 7.4 > 0 else 0,     # voltage ratio
+            t_batt / 35.0 if 35.0 > 0 else 0,   # temperature ratio
+            delta_v_batt * 10,                  # amplified delta_V
+            delta_t_batt * 2                    # amplified delta_T
         ]
         
-        # Mise à jour de l'historique
+        # Update history
         self.prev_v_batt = v_batt
         self.prev_t_batt = t_batt
         
         return np.array(features[:self.expected_features], dtype=np.float32)
     
     def production_inference(self, sample):
-        """Inférence optimisée pour la production"""
+        """Optimized inference for production"""
         if not self.model_loaded:
-            return 100.0  # Valeur par défaut sécurisée
+            return 100.0  # Safe default value
         
         try:
             features = self.prepare_production_features(sample)
@@ -119,14 +120,14 @@ class ProductionMCU:
             reconstruction_error = np.mean(np.square(features - reconstructed[0]))
             return reconstruction_error
         except Exception as e:
-            print(f" Erreur inférence: {e}")
-            return 150.0  # Valeur d'erreur sécurisée
+            print(f" Inference error: {e}")
+            return 150.0  # Safe error value
     
     def check_safety_rules(self, sample):
-        """Vérification des règles de sécurité"""
+        """Check safety rules"""
         v_batt, i_batt, t_batt, v_bus, i_bus, v_solar, i_solar = sample[:7]
         
-        # Règles critiques seulement
+        # Critical rules only
         if t_batt > ProductionConfig.RULE_TEMP_CRITICAL:
             return True, "CRITICAL_TEMP"
         if abs(i_batt) > ProductionConfig.RULE_CURRENT_CRITICAL:
@@ -137,15 +138,15 @@ class ProductionMCU:
         return False, "NORMAL"
     
     def process_production_sample(self, sample):
-        """Traitement d'un échantillon en production"""
-        # 1. Vérification des règles de sécurité
+        """Processing a sample in production"""
+        # 1. Security rule check
         rule_alert, rule_reason = self.check_safety_rules(sample)
         
-        # 2. Détection IA
+        # 2. AI detection
         mcu_error = self.production_inference(sample)
         ai_alert = mcu_error > self.threshold
         
-        # 3. Décision finale
+        # 3. Final decision
         if rule_alert:
             alert_level = 2  # CRITICAL
             alert_reason = rule_reason
@@ -174,20 +175,20 @@ class ProductionOBC:
         self.load_production_model()
     
     def load_production_model(self):
-        """Charge le modèle OBC pour la production"""
+        """Load the OBC model for production"""
         try:
             self.model = tf.keras.models.load_model(self.model_path, compile=False)
             self.model_loaded = True
-            print(f" Modèle OBC chargé: {os.path.basename(self.model_path)}")
-            print(f"   - Seuil de production: {self.threshold}")
+            print(f" OBC model loaded: {os.path.basename(self.model_path)}")
+            print(f"   - Production threshold: {self.threshold}")
         except Exception as e:
-            print(f" Erreur chargement OBC: {e}")
+            print(f" OBC loading error: {e}")
             self.model_loaded = False
     
     def analyze_production_sequence(self, sequence):
-        """Analyse une séquence en production"""
+        """Analyze a sequence in production"""
         if not self.model_loaded:
-            return 120.0  # Valeur par défaut
+            return 120.0  # Safe default value
         
         try:
             if len(sequence.shape) == 2:
@@ -198,7 +199,7 @@ class ProductionOBC:
             return mse
         except Exception as e:
             print(f"️ Erreur OBC: {e}")
-            return 130.0  # Valeur d'erreur
+            return 130.0  # Error value
 
 class ProductionHybridSystem:
     def __init__(self, config):
@@ -206,36 +207,36 @@ class ProductionHybridSystem:
         self.mcu = ProductionMCU(config.MCU_MODEL_PATHS[0], config.THRESHOLD_MCU_AE)
         self.obc = ProductionOBC(config.OBC_MODEL_PATH, config.THRESHOLD_OBC_AE)
         
-        # Chargement des données de production
+        # Loading production data
         self.production_data = self.load_production_data()
         self.sequence_pool = self.load_sequence_pool()
         
-        print(f"\n Données de production chargées:")
-        print(f"   - Échantillons MCU: {len(self.production_data)}")
-        print(f"   - Séquences OBC: {len(self.sequence_pool)}")
+        print(f"\n Production data loaded:")
+        print(f"   - MCU samples: {len(self.production_data)}")
+        print(f"   - OBC sequences: {len(self.sequence_pool)}")
     
     def load_production_data(self):
-        """Charge les données pour la simulation de production"""
+        """Load data for production simulation"""
         try:
             df = pd.read_csv(self.config.MCU_DATASET_PATH)
             required_columns = ['V_batt', 'I_batt', 'T_batt', 'V_bus', 'I_bus', 'V_solar', 'I_solar']
             
-            # Sélection des colonnes disponibles
+            # SSelection of available columns
             available_columns = [col for col in required_columns if col in df.columns]
             if not available_columns:
                 available_columns = df.columns[:7].tolist()
             
             data = df[available_columns].head(self.config.SAMPLE_SIZE)
-            print(f" Données MCU chargées: {len(data)} échantillons")
+            print(f" MCU data loaded: {len(data)} samples")
             return data
             
         except Exception as e:
-            print(f" Erreur chargement données: {e}")
+            print(f" Data loading error: {e}")
             return self.create_production_test_data()
     
     def create_production_test_data(self):
-        """Crée des données de test réalistes pour la production"""
-        print(" Génération de données de test réalistes...")
+        """Create realistic test data for production"""
+        print(" Generating realistic test data...")
         np.random.seed(42)
         
         data = {
@@ -248,41 +249,41 @@ class ProductionHybridSystem:
             'I_solar': np.random.normal(1.3, 0.3, self.config.SAMPLE_SIZE)
         }
         
-        # Ajout de quelques anomalies réalistes
+        # Adding some realistic anomalies
         anomaly_indices = np.random.choice(self.config.SAMPLE_SIZE, 5, replace=False)
         for idx in anomaly_indices:
-            data['T_batt'][idx] = 85  # Surchauffe
-            data['I_batt'][idx] = 4.5 # Surcharge
+            data['T_batt'][idx] = 85  # Overheating
+            data['I_batt'][idx] = 4.5 # Overcurrent
         
         return pd.DataFrame(data)
     
     def load_sequence_pool(self):
-        """Charge un pool de séquences pour l'OBC"""
+        """Load a sequence pool for the OBC"""
         sequences = []
         
-        # Génération de séquences réalistes
+        # GGenerating realistic sequences
         for i in range(20):
             sequence = np.random.normal(0, 0.5, (self.config.WINDOW_SIZE, 7))
             sequences.append(sequence)
         
-        # Ajout de séquences avec anomalies
+        # Adding sequences with anomalies
         for i in range(5):
             sequence = np.random.normal(2.0, 1.0, (self.config.WINDOW_SIZE, 7))
             sequences.append(sequence)
         
-        print(f" Pool de séquences créé: {len(sequences)} séquences")
+        print(f" Sequence pool created: {len(sequences)} sequences")
         return sequences
     
     def get_sequence_for_analysis(self, sample_index):
-        """Sélectionne une séquence pour analyse OBC"""
+        """Select a sequence for OBC analysis"""
         if self.sequence_pool:
             idx = sample_index % len(self.sequence_pool)
             return self.sequence_pool[idx]
         return None
     
     def run_production_simulation(self):
-        """Simulation du système en conditions de production"""
-        print(f"\n DÉMARRAGE SIMULATION DE PRODUCTION")
+        """Production system simulation"""
+        print(f"\n STARTING PRODUCTION SIMULATION")
         print("=" * 50)
         
         results = []
@@ -296,10 +297,10 @@ class ProductionHybridSystem:
             if i >= self.config.SAMPLE_SIZE:
                 break
             
-            # Traitement MCU
+            # MCU processing
             mcu_result = self.mcu.process_production_sample(sample.values)
             
-            # Analyse OBC (seulement si alerte MCU et probabilité déclenchée)
+            # OBC analysis (only if MCU alert and probability triggered)
             obc_analysis = None
             obc_alert = False
             
@@ -314,63 +315,63 @@ class ProductionHybridSystem:
                         'alert': obc_alert
                     }
             
-            # Statistiques d'alerte
+            # Alert statistics
             if mcu_result['alert_level'] == 2:
                 critical_alerts += 1
             elif mcu_result['alert_level'] == 1:
                 warning_alerts += 1
             
-            # Enregistrement des résultats
+            # Recording results
             result = {
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
                 'sample_id': i,
                 'alert_level': mcu_result['alert_level'],
                 'alert_reason': mcu_result['alert_reason'],
-                'mcu_error': float(mcu_result['mcu_error']),  # Conversion explicite
+                'mcu_error': float(mcu_result['mcu_error']),  # Explicit conversion
                 'rule_triggered': mcu_result['rule_alert'],
                 'ai_anomaly': mcu_result['ai_alert'],
                 'obc_called': obc_analysis is not None,
                 'obc_error': float(obc_analysis['error']) if obc_analysis else None,
                 'obc_alert': obc_analysis['alert'] if obc_analysis else False,
-                'cpu_usage': float(psutil.cpu_percent()),  # Conversion explicite
-                'memory_usage': float(psutil.virtual_memory().percent)  # Conversion explicite
+                'cpu_usage': float(psutil.cpu_percent()),  # Explicit conversion
+                'memory_usage': float(psutil.virtual_memory().percent)  # Explicit conversion
             }
             results.append(result)
             
-            # Log de progression
+            # Progress logging
             if i % 50 == 0:
-                print(f" Échantillon {i}/{self.config.SAMPLE_SIZE} - Alertes: {critical_alerts} critiques, {warning_alerts} warnings")
+                print(f" Sample {i}/{self.config.SAMPLE_SIZE} - Alerts: {critical_alerts} critical, {warning_alerts} warnings")
         
         execution_time = time.time() - start_time
         df_results = pd.DataFrame(results)
         
-        # RAPPORT DE PRODUCTION
-        print(f"\n SIMULATION DE PRODUCTION TERMINÉE")
+        # PRODUCTION REPORT
+        print(f"\n PRODUCTION SIMULATION COMPLETED")
         print("=" * 50)
-        print(f"️  Temps d'exécution: {execution_time:.2f}s")
-        print(f" Échantillons traités: {len(df_results)}")
-        print(f" Alertes critiques: {critical_alerts}")
-        print(f"️  Alertes warning: {warning_alerts}")
-        print(f" Analyses OBC: {obc_analyses}")
-        print(f" CPU moyen: {df_results['cpu_usage'].mean():.1f}%")
-        print(f" RAM moyenne: {df_results['memory_usage'].mean():.1f}%")
+        print(f"️  Execution time: {execution_time:.2f}s")
+        print(f" Processed samples: {len(df_results)}")
+        print(f" Critical alerts: {critical_alerts}")
+        print(f"️  Warning alerts: {warning_alerts}")
+        print(f" OBC analyses: {obc_analyses}")
+        print(f" Average CPU: {df_results['cpu_usage'].mean():.1f}%")
+        print(f" Average RAM: {df_results['memory_usage'].mean():.1f}%")
         
         return df_results
     
     def generate_production_report(self, results_df):
-        """Génère un rapport complet de production"""
+        """Generates a comprehensive production report"""
         report_dir = self.config.OUTPUT_DIR
         os.makedirs(report_dir, exist_ok=True)
         
-        # 1. Fichier de résultats détaillés
+        # 1. Detailed results file
         results_path = os.path.join(report_dir, "production_results.csv")
         results_df.to_csv(results_path, index=False)
-        print(f" Résultats détaillés: {results_path}")
+        print(f" Detailed results: {results_path}")
         
-        # 2. Rapport de performance - CORRECTION ICI
+        # 2. Performance report - CORRECTION ICI
         performance_path = os.path.join(report_dir, "production_performance.json")
         
-        # Conversion explicite de tous les types numpy vers Python natif
+        # Explicit conversion of all NumPy types to native Python
         performance_report = {
             "simulation_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "system_configuration": {
@@ -400,112 +401,112 @@ class ProductionHybridSystem:
             },
             "system_status": "OPERATIONAL" if len(results_df[results_df['alert_level'] == 2]) < 10 else "REVIEW_NEEDED",
             "recommendations": [
-                "Système prêt pour le déploiement en production",
-                f"Seuil MCU optimal: {self.config.THRESHOLD_MCU_AE}",
-                f"Seuil OBC optimal: {self.config.THRESHOLD_OBC_AE}",
-                "Surveiller les alertes critiques pendant les premières heures"
+                "System ready for production deployment",
+                f"Optimal MCU threshold: {self.config.THRESHOLD_MCU_AE}",
+                f"Optimal OBC threshold: {self.config.THRESHOLD_OBC_AE}",
+                "Monitor critical alerts during the first few hours"
             ]
         }
         
         with open(performance_path, 'w', encoding='utf-8') as f:
             json.dump(performance_report, f, indent=2, ensure_ascii=False)
         
-        print(f" Rapport de performance: {performance_path}")
+        print(f" Performance report: {performance_path}")
         
-        # 3. Graphique de production
+        # 3. Production charts
         self.create_production_charts(results_df, report_dir)
         
         return performance_report
     
     def create_production_charts(self, results_df, output_dir):
-        """Crée des graphiques pour le rapport de production"""
+        """Creates charts for the production report"""
         plt.figure(figsize=(15, 10))
         
-        # Graphique 1: Distribution des alertes
+        # Chart 1: Alert distribution
         plt.subplot(2, 2, 1)
         alert_counts = results_df['alert_level'].value_counts().sort_index()
         alert_labels = ['Normal', 'Warning', 'Critique']
         colors = ['green', 'orange', 'red']
         
-        # Conversion explicite des counts
+        # Explicit conversion of counts
         alert_counts_list = [int(alert_counts.get(i, 0)) for i in range(3)]
         
         plt.bar(alert_labels, alert_counts_list, color=colors, alpha=0.7)
-        plt.title('Distribution des Niveaux d\'Alerte')
-        plt.ylabel('Nombre d\'échantillons')
+        plt.title('Alert Level Distribution')
+        plt.ylabel('Number of Samples')
         for i, count in enumerate(alert_counts_list):
             plt.text(i, count + 0.1, str(count), ha='center', va='bottom')
         
-        # Graphique 2: Erreurs MCU
+        # Chart 2: MCU Errors
         plt.subplot(2, 2, 2)
         plt.hist(results_df['mcu_error'], bins=50, alpha=0.7, color='blue', edgecolor='black')
         plt.axvline(self.config.THRESHOLD_MCU_AE, color='red', linestyle='--', 
-                   label=f'Seuil MCU ({self.config.THRESHOLD_MCU_AE})')
-        plt.xlabel('Erreur de Reconstruction MCU')
-        plt.ylabel('Fréquence')
-        plt.title('Distribution des Erreurs MCU')
+                   label=f'MCU Threshold ({self.config.THRESHOLD_MCU_AE})')
+        plt.xlabel('MCU Reconstruction Error')
+        plt.ylabel('Frequency')
+        plt.title('MCU Error Distribution')
         plt.legend()
         
-        # Graphique 3: Performance système
+        # Chart 3: System Performance
         plt.subplot(2, 2, 3)
         time_points = range(len(results_df))
         plt.plot(time_points, results_df['cpu_usage'], label='CPU %', alpha=0.7)
         plt.plot(time_points, results_df['memory_usage'], label='RAM %', alpha=0.7)
-        plt.xlabel('Échantillons')
-        plt.ylabel('Utilisation (%)')
-        plt.title('Performance Système')
+        plt.xlabel('Samples')
+        plt.ylabel('Utilization (%)')
+        plt.title('System Performance')
         plt.legend()
         plt.grid(True, alpha=0.3)
         
-        # Graphique 4: Types d'alertes
+        # Chart 4: Alert Types
         plt.subplot(2, 2, 4)
         alert_reasons = results_df[results_df['alert_level'] > 0]['alert_reason'].value_counts().head(5)
         
-        # Conversion explicite pour le pie chart
+        # Explicit conversion for the pie chart
         alert_reasons_values = [int(x) for x in alert_reasons.values]
         alert_reasons_labels = [str(x) for x in alert_reasons.index]
         
         plt.pie(alert_reasons_values, labels=alert_reasons_labels, autopct='%1.1f%%', startangle=90)
-        plt.title('Répartition des Causes d\'Alerte')
+        plt.title('Alert Causes Distribution')
         
         plt.tight_layout()
         chart_path = os.path.join(output_dir, "production_analysis.png")
         plt.savefig(chart_path, dpi=300, bbox_inches='tight')
         plt.close()
         
-        print(f" Graphiques d'analyse: {chart_path}")
+        print(f" Analysis charts: {chart_path}")
 
 def main():
-    """Fonction principale de production"""
-    print(" SYSTÈME HYBRIDE MCU + OBC - LANCEMENT PRODUCTION")
+    """Main production function"""
+    print(" HYBRID MCU + OBC SYSTEM - PRODUCTION START")
     print("=" * 60)
     
     try:
-        # Initialisation du système de production
+        # Initialization of the production system
         production_system = ProductionHybridSystem(ProductionConfig)
         
-        # Simulation de production
+        # Production simulation
         production_results = production_system.run_production_simulation()
         
-        # Génération du rapport
+        # Report generation
         performance_report = production_system.generate_production_report(production_results)
         
-        # RAPPORT FINAL
-        print(f"\n RAPPORT FINAL DE PRODUCTION")
+        # FINAL REPORT
+        print(f"\n FINAL PRODUCTION REPORT")
         print("=" * 50)
-        print(f" SYSTÈME: {performance_report['system_status']}")
-        print(f" ÉCHANTILLONS: {performance_report['performance_metrics']['total_samples']}")
-        print(f" ALERTES CRITIQUES: {performance_report['performance_metrics']['critical_alerts']}")
-        print(f"️  ALERTES WARNING: {performance_report['performance_metrics']['warning_alerts']}")
-        print(f" ANALYSES OBC: {performance_report['performance_metrics']['obc_analyses_performed']}")
-        print(f" CPU MOYEN: {performance_report['performance_metrics']['average_cpu_usage']:.1f}%")
-        print(f" RAM MOYENNE: {performance_report['performance_metrics']['average_memory_usage']:.1f}%")
+        print(f" SYSTEM: {performance_report['system_status']}")
+        print(f" SAMPLES: {performance_report['performance_metrics']['total_samples']}")
+        print(f" CRITICAL ALERTS: {performance_report['performance_metrics']['critical_alerts']}")
+        print(f" WARNING ALERTS: {performance_report['performance_metrics']['warning_alerts']}")
+        print(f" OBC ANALYSES: {performance_report['performance_metrics']['obc_analyses_performed']}")
+        print(f" AVERAGE CPU: {performance_report['performance_metrics']['average_cpu_usage']:.1f}%")
+        print(f" AVERAGE RAM: {performance_report['performance_metrics']['average_memory_usage']:.1f}%")
         
-        print(f"\n RAPPORTS DISPONIBLES DANS: {ProductionConfig.OUTPUT_DIR}")
-        print("SYSTÈME OPTIMISÉ ET PRÊT POUR LE DÉPLOIEMENT !")
+        print(f"\n REPORTS AVAILABLE IN: {ProductionConfig.OUTPUT_DIR}")
+        print("SYSTEM OPTIMIZED AND READY FOR DEPLOYMENT!")
         
     except Exception as e:
-        print(f"ERREUR: {e}")
+        print(f"ERROR: {e}")
         import traceback
         traceback.print_exc()
 
