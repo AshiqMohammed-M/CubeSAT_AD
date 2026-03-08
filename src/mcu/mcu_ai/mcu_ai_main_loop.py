@@ -11,6 +11,28 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from collections import deque
+from pathlib import Path
+import yaml
+
+# ---------------------------------------------------------------------------
+# Load AI thresholds from the central config file
+# ---------------------------------------------------------------------------
+_CONFIG_PATH = Path(__file__).resolve().parents[3] / "src" / "config" / "eps_config.yaml"
+
+def _load_mcu_hybrid_thresholds() -> dict:
+    """Return mcu_hybrid thresholds from eps_config.yaml with hardcoded fallback."""
+    try:
+        with open(_CONFIG_PATH, "r") as fh:
+            cfg = yaml.safe_load(fh)
+        return cfg.get("ai_thresholds", {}).get("mcu_hybrid", {})
+    except FileNotFoundError:
+        import logging
+        logging.getLogger(__name__).warning(
+            "eps_config.yaml not found at %s – using hardcoded defaults", _CONFIG_PATH
+        )
+        return {}
+
+_MCU_HYBRID_THRESHOLDS = _load_mcu_hybrid_thresholds()
 
 # === CORRECTION OF IMPORTS ===
 # Move up one level to reach the mcu/ folder
@@ -57,10 +79,11 @@ class MCUAI_MainLoop:
             # Load training data for simulation
             self.train_data = np.load(os.path.join(self.training_data_dir, "ai_train_data.npy"))
 
+            # Thresholds from src/config/eps_config.yaml ai_thresholds.mcu_hybrid
             self.thresholds = {
-                "normal": 0.35,
-                "warning": 0.55, 
-                "critical": 0.75
+                "normal":   _MCU_HYBRID_THRESHOLDS.get("normal",   0.35),
+                "warning":  _MCU_HYBRID_THRESHOLDS.get("warning",  0.55),
+                "critical": _MCU_HYBRID_THRESHOLDS.get("critical", 0.75),
             }
 
             self.logger.info(f"AI loaded ({len(self.feature_names)} features, calibrated thresholds)")

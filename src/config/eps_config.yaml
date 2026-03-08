@@ -1,0 +1,117 @@
+# ============================================================
+# EPS Guardian – Central Configuration
+# All thresholds, noise parameters, and model settings live
+# here.  Never hard-code these values in source files.
+# ============================================================
+
+# ----------------------------------------------------------
+# MCU Deterministic Rule Thresholds  (Rules R1-R7)
+# ----------------------------------------------------------
+rules:
+  # R1 – Sensor sanity / fault detection
+  T_batt_sensor_fault:   120.0   # °C – unphysically high → sensor fault
+  V_batt_sensor_min:       0.0   # V
+  V_batt_sensor_max:      20.0   # V
+  I_batt_sensor_max:      10.0   # A  (absolute value)
+
+  # R2 – Overheat protection
+  T_batt_critical:        60.0   # °C
+  T_batt_warning:         50.0   # °C
+
+  # R3 – Overcurrent (requires 3 consecutive hits)
+  I_batt_overcurrent:      3.0   # A
+
+  # R4 – Deep discharge / undervoltage
+  V_batt_undervoltage:     3.2   # V  (deep-discharge threshold)
+  V_batt_warning:          6.5   # V  (soft warning)
+
+  # R5 – DC-DC converter ratio
+  ratio_min:               0.7   # V_bus / V_solar lower bound
+
+  # R6 – Bus oscillation
+  oscillation_variance:    0.1   # V²
+
+  # R7 – Alert throttle and heartbeat
+  alert_throttle_s:       60.0   # seconds between repeated alerts
+  heartbeat_every_n:      10     # emit heartbeat every N cycles
+
+# ----------------------------------------------------------
+# AI Model Thresholds
+# ----------------------------------------------------------
+ai_thresholds:
+  simple:
+    normal:   0.6091226281233376
+    warning:  0.8377888951216337
+    critical: 1.0664551621199299
+
+  complex:
+    normal:   0.6091226281233376
+    warning:  0.8377888951216337
+    critical: 1.0664551621199299
+
+  # MCU hybrid simulation uses a calibrated (scaled) set
+  # These are intentionally different from saved-model thresholds
+  # because the simulated error metric has a different dynamic range.
+  mcu_hybrid:
+    normal:   0.35
+    warning:  0.55
+    critical: 0.75
+
+# ----------------------------------------------------------
+# Sensor Noise Model  (Gaussian σ values)
+# ----------------------------------------------------------
+sensor_noise:
+  V_batt:   0.015   # V
+  I_batt:   0.020   # A
+  T_batt:   0.100   # °C
+  V_solar:  0.025   # V
+  I_solar:  0.015   # A
+  V_bus:    0.012   # V
+  I_bus:    0.008   # A
+  T_eps:    0.080   # °C
+  SOC:      0.050   # %
+
+# ----------------------------------------------------------
+# IMU / Simulation Noise  (SimulationEngine)
+# ----------------------------------------------------------
+imu_noise:
+  gyro_sigma:   0.001   # rad/s
+  accel_sigma:  0.01    # m/s²
+  mag_sigma:    0.5     # µT
+
+# ----------------------------------------------------------
+# Anomaly Injection
+# ----------------------------------------------------------
+anomaly_injection:
+  enabled:         true
+  injection_rate:  0.05        # fraction of samples that receive an anomaly
+
+  # Weights must sum to 1.0
+  weights:
+    batt_overheat:          0.15
+    batt_undervoltage:      0.12
+    batt_overvoltage:       0.10
+    batt_overcurrent:       0.08
+    solar_fault:            0.10
+    converter_failure:      0.08
+    eps_overheat:           0.07
+    sensor_fault:           0.05
+    battery_degradation:    0.08
+    progressive_overheat:   0.06
+    oscillation_coupled:    0.05
+    solar_partial_failure:  0.04
+    unknown_pattern:        0.02
+
+# ----------------------------------------------------------
+# Normal Sensor Operating Ranges
+# ----------------------------------------------------------
+sensor_ranges:
+  V_batt:   [7.2,  8.4]
+  I_batt:   [-2.5, 2.5]
+  T_batt:   [-10,  60]
+  V_solar:  [15.0, 18.0]
+  I_solar:  [0.0,  2.0]
+  V_bus:    [7.6,  8.2]
+  I_bus:    [0.05, 1.5]
+  T_eps:    [-10,  55]
+  SOC:      [15,   95]

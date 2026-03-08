@@ -4,8 +4,28 @@ import json
 import os
 from datetime import datetime, timedelta
 from collections import deque
+from pathlib import Path
+import yaml
 from mcu_logger import MCULogger
 #completed
+
+# ---------------------------------------------------------------------------
+# Load all thresholds from the central config file
+# ---------------------------------------------------------------------------
+_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "eps_config.yaml"
+
+def _load_config() -> dict:
+    try:
+        with open(_CONFIG_PATH, "r") as fh:
+            return yaml.safe_load(fh)
+    except FileNotFoundError:
+        logging.getLogger(__name__).warning(
+            "eps_config.yaml not found at %s – using hardcoded defaults", _CONFIG_PATH
+        )
+        return {}
+
+_CFG = _load_config()
+_RULES_CFG = _CFG.get("rules", {})
 # ======================================================
 # MCU → OBC COMMUNICATION INTERFACE WITH TEMPORAL BUFFER
 # ======================================================
@@ -126,16 +146,16 @@ class MCU_RuleEngine:
         self.system_state = "NORMAL"
         self.actions_taken = []
 
-        # Thresholds
+        # Thresholds – loaded from src/config/eps_config.yaml (fallback to defaults)
         self.thresholds = {
-            "T_batt_critical": 60.0,
-            "I_batt_overcurrent": 3.0,  
-            "V_batt_undervoltage": 3.2,
-            "ratio_min": 0.7,
-            "T_batt_sensor_fault": 120.0,
-            "V_batt_sensor_min": 0.0,
-            "V_batt_sensor_max": 20.0,
-            "I_batt_sensor_max": 10.0,
+            "T_batt_critical":    _RULES_CFG.get("T_batt_critical",   60.0),
+            "I_batt_overcurrent": _RULES_CFG.get("I_batt_overcurrent", 3.0),
+            "V_batt_undervoltage":_RULES_CFG.get("V_batt_undervoltage",3.2),
+            "ratio_min":          _RULES_CFG.get("ratio_min",           0.7),
+            "T_batt_sensor_fault":_RULES_CFG.get("T_batt_sensor_fault",120.0),
+            "V_batt_sensor_min":  _RULES_CFG.get("V_batt_sensor_min",   0.0),
+            "V_batt_sensor_max":  _RULES_CFG.get("V_batt_sensor_max",  20.0),
+            "I_batt_sensor_max":  _RULES_CFG.get("I_batt_sensor_max",  10.0),
         }
 
         self.logger.info("MCU_RuleEngine initialized with 30s temporal buffer")
