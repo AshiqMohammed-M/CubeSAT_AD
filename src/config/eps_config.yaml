@@ -115,3 +115,28 @@ sensor_ranges:
   I_bus:    [0.05, 1.5]
   T_eps:    [-10,  55]
   SOC:      [15,   95]
+
+# ----------------------------------------------------------
+# OutputRouter Transports
+# ----------------------------------------------------------
+output:
+  serial:
+    enabled:    false
+    port:       "/dev/ttyUSB0"
+    baud_rate:  115200
+
+  websocket:
+    enabled:    false
+    host:       "localhost"
+    port:       8765
+
+  influxdb:
+    enabled:    false
+    url:        "http://localhost:8086"
+    token:      ""
+    org:        ""
+    bucket:     "eps"
+
+  csv:
+    enabled:    true
+    output_path: "data/telemetry_log.csv"
