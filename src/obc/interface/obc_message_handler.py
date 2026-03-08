@@ -3,6 +3,7 @@
 OBC MESSAGE MANAGER
 Receives and processes messages from the MCU
 """
+# Schema: message_type is always under header{}, never at root level
 #completed
 import json
 import logging
@@ -46,7 +47,7 @@ class OBCMessageHandler:
             else:
                 message = message_json
             
-            self.logger.info(f"Message received: {message.get('message_type', 'UNKNOWN')}")
+            self.logger.info(f"Message received: {message.get('header', {}).get('message_type', 'UNKNOWN')}")
             
             # Extraction of temporal window data
             temporal_window = self._extract_temporal_data(message)
@@ -140,7 +141,7 @@ class OBCMessageHandler:
 
     def _generate_obc_response(self, original_message, ai_result):
         """Generates the OBC response"""
-        message_type = original_message.get('message_type', 'UNKNOWN')
+        message_type = original_message.get('header', {}).get('message_type', 'UNKNOWN')
         ai_level = ai_result.get('ai_level', 'ERROR')
         
         response = {
@@ -189,7 +190,13 @@ class OBCMessageHandler:
             "decision": "ERROR",
             "action": "NONE",
             "error": error_msg,
-            "notes": "Error processing message"
+            "notes": "Error processing message",
+            "ai_analysis": {
+                "status": "error",
+                "severity": "UNKNOWN",
+                "confidence": 0.0,
+                "error": error_msg
+            }
         }
 
 # Global instance

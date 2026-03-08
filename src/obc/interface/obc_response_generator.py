@@ -40,7 +40,7 @@ class OBCResponseGenerator:
             "payload": {
                 "original_message": {
                     "id": original_message.get('header', {}).get('message_id'),
-                    "type": original_message.get('message_type'),
+                    "type": original_message.get('header', {}).get('message_type'),
                     "timestamp": original_message.get('header', {}).get('timestamp')
                 },
                 "obc_analysis": {

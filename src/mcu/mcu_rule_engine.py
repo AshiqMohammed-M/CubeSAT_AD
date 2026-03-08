@@ -64,13 +64,18 @@ class OBCInterface:
             }
             
             # Add window data for SUMMARY and ALERT
+            # OBC requires minimum 30-point window
             if include_window_data and message_type in ["SUMMARY", "ALERT_CRITICAL"]:
                 window_data = self.get_window_data()
-                obc_message["payload"]["temporal_window"] = {
-                    "window_size_seconds": self.window_size.total_seconds(),
-                    "data_points_count": len(window_data),
-                    "sensor_data": window_data[-10:]  # Last 10 points to avoid overflow
-                }
+                if len(window_data) >= 30:
+                    obc_message["payload"]["temporal_window"] = {
+                        "window_size_seconds": self.window_size.total_seconds(),
+                        "data_points_count": len(window_data),
+                        "sensor_data": window_data[-30:]  # OBC LSTM needs >=30 points
+                    }
+                else:
+                    self.logger.info(f"OBC window deferred: only {len(window_data)}/30 points buffered")
+                    obc_message["payload"]["temporal_window"] = None
             
             # Save message to file
             message_filename = f"obc_message_{self.message_counter:06d}_{message_type}.json"
@@ -84,7 +89,8 @@ class OBCInterface:
             print(f"📡 [OBC-TX] Message #{self.message_counter}")
             print(f"   Type: {message_type} | Priority: {obc_message['header']['priority']}")
             print(f"   Timestamp: {obc_message['header']['timestamp']}")
-            print(f"   Window: {len(obc_message['payload'].get('temporal_window', {}).get('sensor_data', []))} points")
+            tw = obc_message['payload'].get('temporal_window') or {}
+            print(f"   Window: {len(tw.get('sensor_data', []))} points")
             print(f"   Saved: {message_filename}")
             print(f"{'='*60}")
             

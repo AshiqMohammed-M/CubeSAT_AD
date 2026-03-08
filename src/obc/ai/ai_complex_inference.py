@@ -328,12 +328,12 @@ class OBC_AI:
 
     def _classify_anomaly(self, error):
         """Classifies the anomaly based on the thresholds"""
-        if error <= self.thresholds["normal_threshold"]:
-            return "NORMAL", "HIGH"
-        elif error <= self.thresholds["warning_threshold"]:
+        if error >= self.thresholds["critical_threshold"]:
+            return "CRITICAL", "HIGH"
+        elif error >= self.thresholds["warning_threshold"]:
             return "WARNING", "MEDIUM"
         else:
-            return "CRITICAL", "HIGH"
+            return "NORMAL", "HIGH"
 
     def get_model_info(self):
         """Returns the model information"""
