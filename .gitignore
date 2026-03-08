@@ -24,3 +24,7 @@ logs/
 *.bak
 *.swp
 *.lock
+
+.vscode
+.python-version
+pyproject.toml
