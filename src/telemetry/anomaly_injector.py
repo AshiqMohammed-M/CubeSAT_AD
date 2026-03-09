@@ -126,7 +126,8 @@ class AnomalyInjector:
         data = data.copy()
 
         if anomaly_type == "batt_overheat":
-            data["T_batt"] = round(random.uniform(55, 70), 1)
+            # Range starts at 61°C to reliably exceed the 60°C critical threshold
+            data["T_batt"] = round(random.uniform(61, 70), 1)
             data["V_batt"] = round(data.get("V_batt", 7.8) * 0.98, 3)
             data["I_batt"] = round(min(abs(data.get("I_batt", 1.0)) * -1.2, -1.8), 3)
 
