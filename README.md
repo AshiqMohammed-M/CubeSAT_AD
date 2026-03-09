@@ -252,3 +252,66 @@ Once installed, you can start the simulation or training from the `/src` directo
  [yasmine.bouchhiwa@isimsf.u-sfax.tn](mailto:yasmine.bouchhiwa@isimsf.u-sfax.tn)<br>
  [https://github.com/Yesmin8/EPS-Guardian](https://github.com/Yesmin8/EPS-Guardian)<br><br>
 Supported by IEEE **AESS & IES Challenge 2025**
+
+---
+
+## OpenMCT Live Dashboard
+
+EPS Guardian streams real-time telemetry to NASA's
+[OpenMCT](https://github.com/nasa/openmct) web dashboard via a WebSocket bridge.
+
+### Architecture
+
+```
+Python pipeline (src/main.py)
+  └─ OutputRouter (ws://localhost:8765)  ←── upstream
+        │
+  dashboard/openmct_server/server.js    ←── bridge (port 8080)
+        │
+  Browser OpenMCT client                ←── downstream
+```
+
+### Quick start
+
+**1. Start the Python telemetry pipeline** (enable WebSocket transport):
+
+```bash
+# Enable WebSocket in src/config/eps_config.yaml:
+#   output.websocket.enabled: true
+.venv/bin/python src/main.py --mode realtime --duration 5400
+```
+
+**2. Install and start the OpenMCT bridge server:**
+
+```bash
+cd dashboard/openmct_server
+npm install
+node server.js
+# Server listens on http://localhost:8080
+```
+
+**3. Open the dashboard:**
+
+```
+http://localhost:8080
+```
+
+The **EPS Guardian** folder appears in the OpenMCT object tree.  
+Expand it to find five groups: `Battery`, `Solar Array`, `Power Bus`,
+`System`, and `Alerts`.  Drag any measurement into a plot or LAD table.
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8080` | HTTP/WebSocket port for the bridge server |
+| `PYTHON_WS_URL` | `ws://localhost:8765` | Upstream Python telemetry server |
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `dashboard/openmct_server/server.js` | Express + ws bridge server |
+| `dashboard/openmct_server/package.json` | Node.js dependencies |
+| `dashboard/openmct_server/schema.json` | Static EPS field schema (served at `/api/telemetry/schema`) |
+| `dashboard/openmct_client/eps_telemetry_plugin.js` | OpenMCT plugin — registers EPS measurements in the object tree |
