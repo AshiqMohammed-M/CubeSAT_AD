@@ -269,12 +269,10 @@ class OutputRouter:
             logger.debug("WebSocket: no clients connected, skipping")
             return
 
-        # Extract timestamp as unix ms for OpenMCT envelope
-        ts_raw = telemetry.get("timestamp", time.time())
-        if isinstance(ts_raw, (int, float)):
-            unix_ms = int(ts_raw * 1000)
-        else:
-            unix_ms = int(time.time() * 1000)
+        # Always use wall-clock time for OpenMCT envelopes so the real-time
+        # plot window (last 30 min UTC) correctly matches incoming data.
+        # The telemetry "timestamp" field is mission-elapsed seconds, not Unix.
+        unix_ms = int(time.time() * 1000)
 
         # Build one envelope per numeric field (OpenMCT format)
         envelopes = []
