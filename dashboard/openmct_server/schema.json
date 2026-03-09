@@ -1,0 +1,48 @@
+{
+  "groups": {
+    "battery": {
+      "label": "Battery",
+      "measurements": ["V_batt", "I_batt", "T_batt", "P_batt", "SOC"]
+    },
+    "solar": {
+      "label": "Solar",
+      "measurements": ["V_solar", "I_solar", "P_solar"]
+    },
+    "bus": {
+      "label": "Bus",
+      "measurements": ["V_bus", "I_bus", "P_bus", "converter_ratio", "power_balance"]
+    },
+    "system": {
+      "label": "System",
+      "measurements": ["T_eps", "altitude_km", "latitude_deg", "longitude_deg", "mission_time_s"]
+    },
+    "alerts": {
+      "label": "Alerts",
+      "measurements": ["anomaly_type", "mcu_alert", "anomaly_active", "orbit_sunlight"]
+    }
+  },
+  "measurements": {
+    "V_batt":           { "name": "Battery Voltage",        "unit": "V",    "min": 7.2,    "max": 8.4,   "format": "float" },
+    "I_batt":           { "name": "Battery Current",        "unit": "A",    "min": -2.5,   "max": 2.5,   "format": "float" },
+    "T_batt":           { "name": "Battery Temperature",    "unit": "°C",   "min": -10.0,  "max": 60.0,  "format": "float" },
+    "P_batt":           { "name": "Battery Power",          "unit": "W",    "min": null,   "max": null,  "format": "float" },
+    "SOC":              { "name": "State of Charge",        "unit": "%",    "min": 15.0,   "max": 95.0,  "format": "float" },
+    "V_solar":          { "name": "Solar Voltage",          "unit": "V",    "min": 15.0,   "max": 18.0,  "format": "float" },
+    "I_solar":          { "name": "Solar Current",          "unit": "A",    "min": 0.0,    "max": 2.0,   "format": "float" },
+    "P_solar":          { "name": "Solar Power",            "unit": "W",    "min": 0.0,    "max": 36.0,  "format": "float" },
+    "V_bus":            { "name": "Bus Voltage",            "unit": "V",    "min": 7.6,    "max": 8.2,   "format": "float" },
+    "I_bus":            { "name": "Bus Current",            "unit": "A",    "min": 0.05,   "max": 1.5,   "format": "float" },
+    "P_bus":            { "name": "Bus Power",              "unit": "W",    "min": 0.0,    "max": 12.0,  "format": "float" },
+    "converter_ratio":  { "name": "Converter Ratio",        "unit": "",     "min": 0.0,    "max": 1.0,   "format": "float" },
+    "power_balance":    { "name": "Power Balance",          "unit": "W",    "min": null,   "max": null,  "format": "float" },
+    "T_eps":            { "name": "EPS Temperature",        "unit": "°C",   "min": -10.0,  "max": 55.0,  "format": "float" },
+    "altitude_km":      { "name": "Altitude",               "unit": "km",   "min": 300.0,  "max": 800.0, "format": "float" },
+    "latitude_deg":     { "name": "Latitude",               "unit": "deg",  "min": -90.0,  "max": 90.0,  "format": "float" },
+    "longitude_deg":    { "name": "Longitude",              "unit": "deg",  "min": -180.0, "max": 180.0, "format": "float" },
+    "mission_time_s":   { "name": "Mission Time",           "unit": "s",    "min": 0.0,    "max": null,  "format": "float" },
+    "anomaly_type":     { "name": "Anomaly Type",           "unit": "",     "min": null,   "max": null,  "format": "string" },
+    "mcu_alert":        { "name": "MCU Alert Level",        "unit": "",     "min": null,   "max": null,  "format": "string" },
+    "anomaly_active":   { "name": "Anomaly Active",         "unit": "",     "min": 0,      "max": 1,     "format": "integer" },
+    "orbit_sunlight":   { "name": "In Sunlight",            "unit": "",     "min": 0,      "max": 1,     "format": "integer" }
+  }
+}
