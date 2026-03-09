@@ -148,3 +148,43 @@ Werkzeug==3.1.6
 wheel==0.46.3
 wrapt==2.1.2
 zipp==3.23.0
+
+
+# ── Layer 1: Physics Simulation ──────────────────────────────
+poliastro==0.17.0
+astropy>=5.0
+ahrs==0.3.1
+pymap3d==3.1.0
+sgp4==2.22
+
+# ── Layer 2: Telemetry & Anomaly Injection ────────────────────
+numpy>=1.24
+scipy>=1.10
+pydantic>=2.0
+pydantic-settings>=2.0
+PyYAML>=6.0
+orjson>=3.9
+
+# ── Layer 3: Output Transports ────────────────────────────────
+pyserial>=3.5
+cobs>=1.2.0
+websockets>=12.0
+influxdb-client>=1.40.0
+
+# ── ML / Model ────────────────────────────────────────────────
+tensorflow>=2.13          # for training autoencoder on PC
+tflite-runtime>=2.13      # lightweight inference only (optional alt)
+
+# ── Data & Logging ────────────────────────────────────────────
+pandas>=2.0
+h5py>=3.9                 # HDF5 dataset storage
+matplotlib>=3.7           # optional: local plots
+rich>=13.0                # pretty console logging
+
+# ── API / Web (FastAPI alternative to raw websockets) ─────────
+fastapi>=0.104
+uvicorn>=0.24
+
+# ── Testing ──────────────────────────────────────────────────
+pytest>=7.4
+pytest-asyncio>=0.23

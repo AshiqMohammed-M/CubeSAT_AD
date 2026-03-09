@@ -28,3 +28,4 @@ logs/
 .vscode
 .python-version
 pyproject.toml
+obc_messages/
