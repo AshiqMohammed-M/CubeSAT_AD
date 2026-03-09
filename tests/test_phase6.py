@@ -32,8 +32,17 @@ import yaml
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _CONFIG_PATH = _PROJECT_ROOT / "src" / "config" / "eps_config.yaml"
 
-# EPS keys that anomaly injectors are expected to change
-_EPS_KEYS = {"V_batt", "I_batt", "T_batt", "V_solar", "I_solar", "V_bus", "I_bus", "T_eps", "SOC"}
+# EPS + attitude/IMU keys that anomaly injectors are expected to change
+_EPS_KEYS = {
+    "V_batt", "I_batt", "T_batt", "V_solar", "I_solar", "V_bus", "I_bus", "T_eps", "SOC",
+    "attitude_error_deg", "gyro_x", "gyro_y", "gyro_z",
+    "accel_x", "accel_y", "accel_z", "accel_magnitude",
+    "angular_velocity_x", "angular_velocity_y", "angular_velocity_z",
+    "angular_velocity_magnitude", "gyro_magnitude",
+    "roll_deg", "pitch_deg", "yaw_deg",
+    "quaternion_w", "quaternion_x", "quaternion_y", "quaternion_z",
+    "mag_x", "mag_y", "mag_z",
+}
 
 
 def _load_cfg() -> dict:
@@ -75,7 +84,7 @@ class TestAnomalyInjector:
 
         injector = AnomalyInjector(enabled=True, seed=42)
         catalog = injector.get_anomaly_catalog()
-        assert len(catalog) == 13, f"Expected 13 anomaly types, got {len(catalog)}"
+        assert len(catalog) == 21, f"Expected 21 anomaly types, got {len(catalog)}"
 
         baseline_eps = {k: normal_telemetry_dict[k] for k in _EPS_KEYS if k in normal_telemetry_dict}
 
