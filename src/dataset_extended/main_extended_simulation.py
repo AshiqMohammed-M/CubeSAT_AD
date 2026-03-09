@@ -15,7 +15,16 @@ from sklearn.preprocessing import StandardScaler
 import json
 import joblib
 
-PROJECT_ROOT = r"D:\final_year_project\Cubesat_AD"
+def _find_project_root():
+    """Detect project root dynamically (works on any OS)."""
+    d = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(5):
+        if os.path.isdir(os.path.join(d, "data")):
+            return d
+        d = os.path.dirname(d)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+PROJECT_ROOT = _find_project_root()
 DATA_INPUT = os.path.join(PROJECT_ROOT, "data", "dataset", "pro_eps_dataset.csv")
 
 # Output directories 
@@ -87,7 +96,11 @@ class ComplexDataGenerator:
             logger.info(f"Data loaded: {len(df)} rows, {len(df.columns)} columns")
             
             # Check for required columns
-            expected_columns = ["V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar"]
+            expected_columns = [
+                "V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar",
+                "attitude_error_deg", "gyro_x", "gyro_y", "gyro_z",
+                "accel_magnitude", "angular_velocity_magnitude", "mag_x",
+            ]
             missing_columns = [col for col in expected_columns if col not in df.columns]
             
             if missing_columns:
@@ -123,13 +136,23 @@ class ComplexDataGenerator:
             'V_bus': np.random.uniform(7.0, 8.0, num_samples),
             'I_bus': np.random.uniform(0.5, 2.0, num_samples),
             'V_solar': np.random.uniform(0, 18, num_samples),
-            'I_solar': np.random.uniform(0, 2.5, num_samples)
+            'I_solar': np.random.uniform(0, 2.5, num_samples),
+            # Attitude / IMU features
+            'attitude_error_deg': np.random.uniform(0, 5, num_samples),
+            'gyro_x': np.random.normal(0, 0.01, num_samples),
+            'gyro_y': np.random.normal(0, 0.01, num_samples),
+            'gyro_z': np.random.normal(0, 0.01, num_samples),
+            'accel_magnitude': np.random.normal(9.81, 0.05, num_samples),
+            'angular_velocity_magnitude': np.random.uniform(0, 0.05, num_samples),
+            'mag_x': np.random.normal(25.0, 2.0, num_samples),
         }
         
         # Add simulated anomalies
         data['T_batt'][100:150] = 65  # Overheat
         data['V_batt'][300:320] = 2.8  # Critical voltage
         data['I_batt'][500:530] = 4.0  # High current
+        data['attitude_error_deg'][600:630] = 45.0  # Pointing loss
+        data['angular_velocity_magnitude'][700:740] = 0.6  # Tumble
         
         df = pd.DataFrame(data)
         
@@ -141,13 +164,25 @@ class ComplexDataGenerator:
 
     def _add_missing_columns(self, df, missing_columns):
         """Adds missing columns with simulated data"""
+        _defaults = {
+            'V_': lambda n: np.random.uniform(5, 15, n),
+            'I_': lambda n: np.random.uniform(0.5, 3.0, n),
+            'T_batt': lambda n: np.random.uniform(20, 45, n),
+            'attitude_error_deg': lambda n: np.random.uniform(0, 5, n),
+            'gyro_': lambda n: np.random.normal(0, 0.01, n),
+            'accel_magnitude': lambda n: np.random.normal(9.81, 0.05, n),
+            'angular_velocity_magnitude': lambda n: np.random.uniform(0, 0.05, n),
+            'mag_': lambda n: np.random.normal(25.0, 2.0, n),
+        }
         for col in missing_columns:
-            if col.startswith('V_'):
-                df[col] = np.random.uniform(5, 15, len(df))
-            elif col.startswith('I_'):
-                df[col] = np.random.uniform(0.5, 3.0, len(df))
-            elif col == 'T_batt':
-                df[col] = np.random.uniform(20, 45, len(df))
+            generated = False
+            for prefix, gen in _defaults.items():
+                if col.startswith(prefix) or col == prefix:
+                    df[col] = gen(len(df))
+                    generated = True
+                    break
+            if not generated:
+                df[col] = np.zeros(len(df))
         
         logger.info(f"Columns added: {missing_columns}")
         return df
@@ -157,7 +192,11 @@ class ComplexDataGenerator:
         features = {}
         
         # Basic statistics for each column
-        for col in ["V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar"]:
+        for col in [
+            "V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar",
+            "attitude_error_deg", "gyro_x", "gyro_y", "gyro_z",
+            "accel_magnitude", "angular_velocity_magnitude", "mag_x",
+        ]:
             if col in window.columns:
                 features[f"{col}_mean"] = window[col].mean()
                 features[f"{col}_std"] = window[col].std()
@@ -213,21 +252,31 @@ class ComplexDataGenerator:
 
     def assign_window_label(self, window):
         """Assigns a label to the temporal window"""
-        # Conditions CRITICAL
+        # Conditions CRITICAL (EPS + attitude/IMU)
         if (window["T_batt"].max() > self.thresholds["T_batt_critical"] or
             window["V_batt"].min() < self.thresholds["V_batt_critical_min"]):
             return "CRITICAL"
+        if "attitude_error_deg" in window.columns and window["attitude_error_deg"].max() > 30.0:
+            return "CRITICAL"
+        if "angular_velocity_magnitude" in window.columns and (window["angular_velocity_magnitude"] > 0.4).sum() >= 3:
+            return "CRITICAL"
+        if "accel_magnitude" in window.columns and window["accel_magnitude"].min() < 0.1:
+            return "CRITICAL"
         
         # Conditions WARNING
-        elif (window["I_batt"].max() > self.thresholds["I_batt_warning"] or
-              window["V_bus"].std() > self.thresholds["V_bus_oscillation"] or
-              window["T_batt"].max() > self.thresholds["T_batt_warning"] or
-              self._calculate_oscillation_score(window) > 0.3):
+        if (window["I_batt"].max() > self.thresholds["I_batt_warning"] or
+            window["V_bus"].std() > self.thresholds["V_bus_oscillation"] or
+            window["T_batt"].max() > self.thresholds["T_batt_warning"] or
+            self._calculate_oscillation_score(window) > 0.3):
             return "WARNING"
+        if "attitude_error_deg" in window.columns and window["attitude_error_deg"].max() > 15.0:
+            return "WARNING"
+        for axis in ("gyro_x", "gyro_y", "gyro_z"):
+            if axis in window.columns and window[axis].abs().max() > 1.5:
+                return "WARNING"
         
         # NORMAL
-        else:
-            return "NORMAL"
+        return "NORMAL"
 
     def generate_sequences(self, df):
         """Generates temporal sequences and labels with consistent normalization"""
@@ -244,8 +293,12 @@ class ComplexDataGenerator:
         for i in range(0, len(df) - self.window_size + 1, self.stride):
             window = df.iloc[i:i + self.window_size].copy()
             
-            # Extract sequence data
-            sequence_cols = ["V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar"]
+            # Extract sequence data (7 EPS + 7 attitude/IMU = 14 features)
+            sequence_cols = [
+                "V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar",
+                "attitude_error_deg", "gyro_x", "gyro_y", "gyro_z",
+                "accel_magnitude", "angular_velocity_magnitude", "mag_x",
+            ]
             sequence_data = window[sequence_cols].values
             sequences.append(sequence_data)
             
@@ -364,7 +417,11 @@ class ComplexDataGenerator:
                 'feature_scaler_mean': self.feature_scaler.mean_.tolist(),
                 'feature_scaler_scale': self.feature_scaler.scale_.tolist()
             },
-            'input_features': ["V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar"],
+            'input_features': [
+                "V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar",
+                "attitude_error_deg", "gyro_x", "gyro_y", "gyro_z",
+                "accel_magnitude", "angular_velocity_magnitude", "mag_x",
+            ],
             'output_labels': ["NORMAL", "WARNING", "CRITICAL"],
             'purpose': "Training advanced AI models (LSTM, Autoencoder, GRU) for temporal anomaly detection"
         }
@@ -438,12 +495,15 @@ class ComplexDataGenerator:
         
         # Chart 2: Correlation matrix
         plt.subplot(2, 3, 2)
+        _seq_labels = [
+            "V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar",
+            "att_err", "gx", "gy", "gz", "acc_m", "ω_m", "mx",
+        ]
         if len(data['sequences']) > 0:
             first_sequence = data['sequences'][0]
             corr_matrix = np.corrcoef(first_sequence.T)
-            sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', 
-                       xticklabels=["V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar"],
-                       yticklabels=["V_batt", "I_batt", "T_batt", "V_bus", "I_bus", "V_solar", "I_solar"])
+            sns.heatmap(corr_matrix, annot=False, cmap='coolwarm',
+                       xticklabels=_seq_labels, yticklabels=_seq_labels, fmt=".1f")
             plt.title('Correlation - Normalized Sequence')
         
         # Chart 3: Example temporal sequence
