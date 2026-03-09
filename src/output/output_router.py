@@ -241,13 +241,15 @@ class OutputRouter:
 
     def _run_ws_loop(self) -> None:
         asyncio.set_event_loop(self._ws_loop)
-        start_server = websockets.serve(
+        self._ws_loop.run_until_complete(self._ws_main())
+
+    async def _ws_main(self) -> None:
+        async with websockets.serve(
             self._ws_handler, self._ws_host, self._ws_port,
-        )
-        self._ws_server = self._ws_loop.run_until_complete(start_server)
-        self._ws_loop.run_forever()
-        self._ws_server.close()
-        self._ws_loop.run_until_complete(self._ws_server.wait_closed())
+        ) as server:
+            self._ws_server = server
+            # Run until the loop is stopped externally (via stop())
+            await asyncio.get_event_loop().create_future()
 
     async def _ws_handler(self, websocket, path=None) -> None:
         """Register new WebSocket client and keep connection alive."""
