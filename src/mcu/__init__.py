@@ -2,11 +2,11 @@
 MCU Module - EPS GUARDIAN Embedded System
 """
 
-from mcu_rule_engine import MCU_RuleEngine
-from mcu_main_loop import MCU_MainLoop
-from mcu_data_interface import DataInterface
-from mcu_resource_monitor import ResourceMonitor, measure_resource_usage
-from mcu_logger import setup_logger
+from .mcu_rule_engine import MCU_RuleEngine
+from .mcu_main_loop import MCU_MainLoop
+from .mcu_data_interface import DataInterface
+from .mcu_resource_monitor import ResourceMonitor, measure_resource_usage
+from .mcu_logger import setup_logger
 
 __version__ = "1.0.0"
 __author__ = "EPS GUARDIAN Team"
