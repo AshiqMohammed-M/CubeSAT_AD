@@ -1,8 +1,8 @@
 {
-  "timestamp": "2025-12-12T11:56:29.431033",
+  "timestamp": "2026-03-08T16:09:55.900926",
   "samples_collected": 10,
-  "average_memory_MB": 77.41,
-  "max_memory_MB": 82.32,
-  "average_cpu_percent": 7.3,
-  "max_cpu_percent": 16.0
+  "average_memory_MB": 95.96,
+  "max_memory_MB": 109.03,
+  "average_cpu_percent": 89.0,
+  "max_cpu_percent": 104.8
 }

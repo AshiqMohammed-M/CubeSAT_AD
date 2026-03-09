@@ -1,0 +1,37 @@
+{
+  "system_id": "OBC_20260308_104635",
+  "timestamp": "2026-03-08T10:46:36.304096",
+  "processed_count": 1,
+  "response": {
+    "header": {
+      "message_id": 1,
+      "timestamp": "2026-03-08T10:46:36.303502Z",
+      "source": "OBC",
+      "message_type": "RESPONSE",
+      "priority": "LOW",
+      "version": "1.0"
+    },
+    "payload": {
+      "original_message": {
+        "id": 8748,
+        "type": "SUMMARY",
+        "timestamp": "2026-03-08T10:46:35.656795Z"
+      },
+      "obc_analysis": {
+        "ai_score": 0.48528968062572236,
+        "ai_level": "NORMAL",
+        "confidence": "HIGH",
+        "reconstruction_error": 0.48528968062572236
+      },
+      "decision": "IGNORE",
+      "action": "NONE",
+      "notes": "No anomaly detected by OBC AI",
+      "timestamp_obc": "2026-03-08T10:46:36.303517Z"
+    }
+  },
+  "original_message_summary": {
+    "message_id": 8748,
+    "message_type": "SUMMARY",
+    "source": "EPS_MCU"
+  }
+}
