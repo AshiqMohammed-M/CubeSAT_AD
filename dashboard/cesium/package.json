@@ -1,0 +1,13 @@
+{
+  "name": "eps-cesium-dashboard",
+  "version": "1.0.0",
+  "description": "Nanosatellite 3D anomaly visualization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev":   "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

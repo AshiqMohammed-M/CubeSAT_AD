@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nanosatellite Anomaly Detection — Live View</title>
+
+  <!-- Get free token at cesium.com/ion -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+  <link  href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body, #cesiumContainer {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* Hide default Cesium credits bar */
+    .cesium-credit-logoContainer,
+    .cesium-credit-textContainer { display: none !important; }
+
+    /* ── Status panel (top-left) ───────────────────────────────────────── */
+    #statusPanel {
+      position: absolute;
+      top: 16px; left: 16px;
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 14px 20px 16px;
+      color: #e2e8f0;
+      font-size: 13px;
+      line-height: 2;
+      min-width: 270px;
+      z-index: 200;
+      backdrop-filter: blur(6px);
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+
+    #statusPanel.flash-warning  { animation: flashWarning  0.7s ease; }
+    #statusPanel.flash-critical { animation: flashCritical 0.7s ease; }
+
+    @keyframes flashWarning {
+      0%, 100% { border-color: rgba(255,255,255,0.14); box-shadow: none; }
+      40%       { border-color: #f59e0b; box-shadow: 0 0 14px #f59e0b88; }
+    }
+    @keyframes flashCritical {
+      0%, 100% { border-color: rgba(255,255,255,0.14); box-shadow: none; }
+      40%       { border-color: #ef4444; box-shadow: 0 0 18px #ef444488; }
+    }
+
+    #statusPanel h3 {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    #statusPanel hr {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.09);
+      margin: 4px 0 8px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .status-label { color: #94a3b8; }
+    .status-value { color: #f1f5f9; font-weight: 600; }
+
+    #alertBadge {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+    }
+    .badge-normal   { background: rgba(34,197,94,0.18);  color: #4ade80; border: 1px solid #22c55e66; }
+    .badge-warning  { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid #f59e0b66; }
+    .badge-critical { background: rgba(239,68,68,0.18);  color: #f87171; border: 1px solid #ef444466; }
+
+    /* ── Connection badge (top-right) ─────────────────────────────────── */
+    #connBadge {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 20px;
+      padding: 6px 16px 6px 12px;
+      color: #e2e8f0;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 200;
+      backdrop-filter: blur(6px);
+    }
+
+    .conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-connecting   { background: #64748b; }
+    .dot-connected    { background: #4ade80; box-shadow: 0 0 6px #4ade8088; }
+    .dot-disconnected { background: #ef4444; }
+
+    /* ── Bottom-centre ACTIVE badge ───────────────────────────────────── */
+    #activeBadge {
+      position: absolute;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.76);
+      border: 1px solid rgba(74, 222, 128, 0.35);
+      border-radius: 24px;
+      padding: 7px 22px;
+      color: #f1f5f9;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    /* ── Inject button (bottom-right) ─────────────────────────────────── */
+    #injectBtn {
+      position: absolute;
+      bottom: 24px; right: 16px;
+      padding: 9px 20px;
+      border-radius: 6px;
+      border: 1px solid rgba(59,130,246,0.5);
+      background: rgba(37, 99, 235, 0.75);
+      color: #fff;
+      font-size: 12px;
+      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      z-index: 200;
+      transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+    #injectBtn:hover:not(:disabled) { background: rgba(29, 78, 216, 0.9); }
+    #injectBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #injectBtn.critical {
+      background: rgba(185, 28, 28, 0.8);
+      border-color: rgba(239, 68, 68, 0.6);
+    }
+    #injectBtn.critical:hover:not(:disabled) { background: rgba(153, 27, 27, 0.95); }
+  </style>
+</head>
+<body>
+
+<div id="cesiumContainer"></div>
+
+<!-- ── Status panel ─────────────────────────────────────────────────────── -->
+<div id="statusPanel">
+  <h3>🛰 Nanosatellite Status</h3>
+  <hr />
+  <div class="status-row">
+    <span class="status-label">System</span>
+    <span class="status-value">
+      <span id="alertBadge" class="badge-normal">NORMAL</span>
+    </span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Battery</span>
+    <span class="status-value"><span id="vBatt">—</span> V</span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Temperature</span>
+    <span class="status-value"><span id="tBatt">—</span> °C</span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Charge</span>
+    <span class="status-value"><span id="soc">—</span> %</span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Anomaly</span>
+    <span class="status-value"><span id="anomalyType">none</span></span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Updated</span>
+    <span class="status-value"><span id="lastUpdate">—</span></span>
+  </div>
+</div>
+
+<!-- ── Connection badge ──────────────────────────────────────────────────── -->
+<div id="connBadge">
+  <span class="conn-dot dot-connecting" id="connDot"></span>
+  <span id="connText">CONNECTING...</span>
+</div>
+
+<!-- ── Bottom-centre badge ──────────────────────────────────────────────── -->
+<div id="activeBadge">⚡ ANOMALY DETECTION SYSTEM: ACTIVE</div>
+
+<!-- ── Inject button ────────────────────────────────────────────────────── -->
+<button id="injectBtn" onclick="injectTestAnomaly()">Inject Test Anomaly</button>
+
+<!-- ── Cesium initialization ────────────────────────────────────────────── -->
+<script>
+  /* Get free token at cesium.com/ion */
+  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZmM1YjUzYy02ODAzLTQ2N2UtODY4Ni1kYTk2YWQxOWIzMjciLCJpZCI6NDAwOTE1LCJpYXQiOjE3NzMwNzg4MTN9.I5NsyiDTgrFPSq9uYcxhMhVNXTqyhgwRIBa4IUvgkAc';
+
+  // Bundled NaturalEarthII imagery — works without a token.
+  // Upgrade to Ion Asset 3812 ("Earth at Night") by replacing the
+  // imageryProvider line below once you have a token:
+  //   imageryProvider: new Cesium.IonImageryProvider({ assetId: 3812 })
+  window.cesiumViewer = new Cesium.Viewer('cesiumContainer', {
+    imageryProvider: new Cesium.TileMapServiceImageryProvider({
+      url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
+    }),
+    terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+    baseLayerPicker:       false,
+    geocoder:              false,
+    homeButton:            false,
+    sceneModePicker:       false,
+    navigationHelpButton:  false,
+    animation:             false,
+    timeline:              false,
+    fullscreenButton:      false,
+    infoBox:               false,
+    selectionIndicator:    false,
+    // Reduces GPU usage ~80 % — critical for Codespaces-forwarded URLs
+    requestRenderMode:          true,
+    maximumRenderTimeChange:    Infinity,
+  });
+
+  // Enhance visual depth
+  cesiumViewer.scene.globe.enableLighting = true;
+  cesiumViewer.scene.backgroundColor = Cesium.Color.BLACK;
+
+  // Start at an orbital overview
+  cesiumViewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(0, 20, 20000000),
+  });
+</script>
+
+<script src="satellite.js"></script>
+<script src="telemetry.js"></script>
+
+<!-- ── Inject button logic ──────────────────────────────────────────────── -->
+<script>
+  function injectTestAnomaly() {
+    var btn = document.getElementById('injectBtn');
+    btn.disabled = true;
+
+    // Dynamic API host so Codespaces forwarding works
+    var apiBase = (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+    ) ? 'http://localhost:5000'
+      : 'https://' + window.location.hostname.replace('-8080', '-5000');
+
+    fetch(apiBase + '/api/inject', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ anomaly_type: 'battery_overheat' }),
+    }).catch(function () {}); // fire-and-forget
+
+    setTimeout(function () { btn.disabled = false; }, 5000);
+  }
+
+  // Called by telemetry.js when alert level changes
+  window._setInjectButtonState = function (alertLevel) {
+    var btn = document.getElementById('injectBtn');
+    if (alertLevel === 'CRITICAL') btn.classList.add('critical');
+    else                            btn.classList.remove('critical');
+  };
+</script>
+
+</body>
+<!--
+═══════════════════════════════════════════════════════════════════════════════
+STAKEHOLDER DEMO SCRIPT  (5 steps · ~3 minutes total)
+───────────────────────────────────────────────────────────────────────────────
+
+Step 1 [30s]: "This is our nanosatellite orbiting Earth in real time
+  at 550 km altitude. The blue trail shows its orbital path.
+  All telemetry is being monitored live."
+
+Step 2 [30s]: "The system continuously monitors 5 subsystems:
+  power, thermal, attitude, IMU, and pressure. Right now
+  everything is nominal — battery healthy, temperature normal."
+
+Step 3 [45s]: "Watch what happens when a fault occurs."
+  → Click 'Inject Test Anomaly'
+  → "The satellite immediately turns red. The system has detected
+    a battery overtemperature fault in under 2 seconds."
+
+Step 4 [45s]: "The onboard AI has classified this as CRITICAL
+  severity and triggered an automatic isolation response —
+  the battery is being protected from thermal runaway."
+
+Step 5 [30s]: "Without this system, this fault would go undetected
+  until permanent damage occurs. With it, the satellite
+  protects itself autonomously, even when out of ground
+  station contact range."
+
+═══════════════════════════════════════════════════════════════════════════════
+-->
+</html>
