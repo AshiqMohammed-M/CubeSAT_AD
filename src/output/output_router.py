@@ -291,20 +291,47 @@ class OutputRouter:
                     "value": int(value),
                 }))
 
-        if not envelopes:
-            return
-
         dead_clients = set()
+
+        # 1. OpenMCT per-field envelopes (numeric / bool fields only)
+        if envelopes:
+            for ws in list(self._ws_clients):
+                for msg in envelopes:
+                    try:
+                        future = asyncio.run_coroutine_threadsafe(
+                            ws.send(msg), self._ws_loop,
+                        )
+                        future.result(timeout=2)
+                    except Exception:
+                        dead_clients.add(ws)
+                        break
+
+        # 2. Cesium 3-D dashboard full-snapshot
+        #    Includes string fields (mcu_alert, anomaly_type) that the OpenMCT
+        #    envelope loop skips, so the Cesium client can colour the satellite
+        #    correctly without local threshold inference.
+        _CESIUM_KEYS = (
+            "latitude_deg", "longitude_deg", "altitude_km",
+            "V_batt", "T_batt", "SOC",
+            "mcu_alert", "anomaly_type", "anomaly_active",
+            "attitude_error_deg",
+        )
+        cesium_msg = json.dumps(
+            {
+                "type": "cesium_telemetry",
+                "timestamp": unix_ms,
+                **{k: telemetry[k] for k in _CESIUM_KEYS if k in telemetry},
+            },
+            separators=(",", ":"),
+        )
         for ws in list(self._ws_clients):
-            for msg in envelopes:
-                try:
-                    future = asyncio.run_coroutine_threadsafe(
-                        ws.send(msg), self._ws_loop,
-                    )
-                    future.result(timeout=2)
-                except Exception:
-                    dead_clients.add(ws)
-                    break
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    ws.send(cesium_msg), self._ws_loop,
+                ).result(timeout=2)
+            except Exception:
+                dead_clients.add(ws)
+
         self._ws_clients -= dead_clients
 
     # ==================================================================
