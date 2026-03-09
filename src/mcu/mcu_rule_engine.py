@@ -138,6 +138,8 @@ class MCU_RuleEngine:
         self.overcurrent_buffer = deque(maxlen=3)
         self.ratio_buffer = deque(maxlen=10)
         self.oscillation_buffer = deque(maxlen=10)
+        self.attitude_error_buffer = deque(maxlen=2)     # R8
+        self.tumble_buffer = deque(maxlen=3)              # R11
         self.heartbeat_counter = 0
 
         # System state
@@ -156,6 +158,11 @@ class MCU_RuleEngine:
             "V_batt_sensor_min":  _RULES_CFG.get("V_batt_sensor_min",   0.0),
             "V_batt_sensor_max":  _RULES_CFG.get("V_batt_sensor_max",  20.0),
             "I_batt_sensor_max":  _RULES_CFG.get("I_batt_sensor_max",  10.0),
+            # R8-R11: attitude / IMU thresholds
+            "attitude_error_critical_deg": _RULES_CFG.get("attitude_error_critical_deg", 30.0),
+            "gyro_spike_threshold_rad_s":  _RULES_CFG.get("gyro_spike_threshold_rad_s",  1.5),
+            "accel_dead_threshold_m_s2":   _RULES_CFG.get("accel_dead_threshold_m_s2",   0.1),
+            "angular_velocity_tumble_rad_s": _RULES_CFG.get("angular_velocity_tumble_rad_s", 0.4),
         }
 
         self.logger.info("MCU_RuleEngine initialized with 30s temporal buffer")
@@ -229,6 +236,42 @@ class MCU_RuleEngine:
             return variance > 0.1
         return False
 
+    # ── R8-R11: attitude / IMU checks ──────────────────────────
+    def _check_attitude_error(self, s):
+        """R8: 2 consecutive samples with attitude_error > critical → CRITICAL"""
+        err = s.get("attitude_error_deg", 0.0)
+        self.attitude_error_buffer.append(err)
+        if len(self.attitude_error_buffer) >= 2:
+            return all(
+                v > self.thresholds["attitude_error_critical_deg"]
+                for v in self.attitude_error_buffer
+            )
+        return False
+
+    def _check_gyro_spike(self, s):
+        """R9: any single gyro axis exceeds spike threshold → WARNING"""
+        thresh = self.thresholds["gyro_spike_threshold_rad_s"]
+        for axis in ("gyro_x", "gyro_y", "gyro_z"):
+            if abs(s.get(axis, 0.0)) > thresh:
+                return True
+        return False
+
+    def _check_accel_failure(self, s):
+        """R10: accelerometer magnitude near zero → CRITICAL (sensor dead)"""
+        mag = s.get("accel_magnitude", 9.81)
+        return mag < self.thresholds["accel_dead_threshold_m_s2"]
+
+    def _check_tumble(self, s):
+        """R11: 3 consecutive angular-velocity magnitudes > tumble threshold → CRITICAL"""
+        mag = s.get("angular_velocity_magnitude", 0.0)
+        self.tumble_buffer.append(mag)
+        if len(self.tumble_buffer) >= 3:
+            return all(
+                v > self.thresholds["angular_velocity_tumble_rad_s"]
+                for v in self.tumble_buffer
+            )
+        return False
+
     def _throttle_alert(self, alert_type):
         """Anti-spam for alerts"""
         current_time = datetime.now().timestamp()
@@ -244,7 +287,7 @@ class MCU_RuleEngine:
     # RULE APPLICATION WITH COMPLETE OBC TRANSMISSION
     # ======================================================
     def apply_rules(self, s):
-        """Applies rules R1-R7 with OBC transmission and temporal data"""
+        """Applies rules R1-R11 with OBC transmission and temporal data"""
         # Add data to temporal buffer
         self.obc_interface.add_sensor_data(s)
         
@@ -357,6 +400,74 @@ class MCU_RuleEngine:
             
             self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
             self.logger.warning("R5 - Bus oscillation detected")
+
+        # R8: Attitude error critical (2-sample persistence)
+        elif self._check_attitude_error(s):
+            if self._throttle_alert("R8"):
+                self.trigger_action("SAFE_MODE", f"Attitude error: {s.get('attitude_error_deg', 0):.1f}°")
+                self.trigger_action("LED_RED")
+                message_type = "ALERT_CRITICAL"
+                details.update({
+                    "rule_triggered": "R8",
+                    "attitude_error_deg": s.get("attitude_error_deg", 0),
+                    "actions_taken": [a["action"] for a in self.actions_taken],
+                    "emergency_level": "HIGH"
+                })
+                self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
+                self.logger.critical(f"R8 - Attitude error critical: {s.get('attitude_error_deg', 0):.1f}°")
+                self.system_state = "CRITICAL"
+                return actions, message_type, details
+
+        # R9: Gyro spike (single-sample, WARNING)
+        elif self._check_gyro_spike(s):
+            self.trigger_action("INCREASE_LOGGING", "Gyro spike detected")
+            self.trigger_action("LED_YELLOW")
+            message_type = "SUMMARY"
+            details.update({
+                "rule_triggered": "R9",
+                "gyro_x": s.get("gyro_x", 0),
+                "gyro_y": s.get("gyro_y", 0),
+                "gyro_z": s.get("gyro_z", 0),
+                "actions_taken": [a["action"] for a in self.actions_taken],
+                "emergency_level": "MEDIUM"
+            })
+            self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
+            self.logger.warning("R9 - Gyro spike detected")
+
+        # R10: Accelerometer failure (sensor dead, CRITICAL)
+        elif self._check_accel_failure(s):
+            if self._throttle_alert("R10"):
+                self.trigger_action("SAFE_MODE", "Accelerometer dead")
+                self.trigger_action("LED_RED")
+                message_type = "ALERT_CRITICAL"
+                details.update({
+                    "rule_triggered": "R10",
+                    "accel_magnitude": s.get("accel_magnitude", 0),
+                    "actions_taken": [a["action"] for a in self.actions_taken],
+                    "emergency_level": "HIGH"
+                })
+                self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
+                self.logger.critical(f"R10 - Accelerometer failure: mag={s.get('accel_magnitude', 0):.3f}")
+                self.system_state = "CRITICAL"
+                return actions, message_type, details
+
+        # R11: Tumble detection (3-sample persistence, CRITICAL)
+        elif self._check_tumble(s):
+            if self._throttle_alert("R11"):
+                self.trigger_action("SAFE_MODE", "Tumble detected")
+                self.trigger_action("LED_RED")
+                self.trigger_action("BUZZER_ALARM")
+                message_type = "ALERT_CRITICAL"
+                details.update({
+                    "rule_triggered": "R11",
+                    "angular_velocity_magnitude": s.get("angular_velocity_magnitude", 0),
+                    "actions_taken": [a["action"] for a in self.actions_taken],
+                    "emergency_level": "HIGH"
+                })
+                self.obc_interface.send_to_obc(message_type, details, include_window_data=True)
+                self.logger.critical("R11 - Tumble detected")
+                self.system_state = "CRITICAL"
+                return actions, message_type, details
 
         # R7: Normal state + periodic heartbeat
         else:

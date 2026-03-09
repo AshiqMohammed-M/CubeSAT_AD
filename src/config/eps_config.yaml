@@ -5,7 +5,7 @@
 # ============================================================
 
 # ----------------------------------------------------------
-# MCU Deterministic Rule Thresholds  (Rules R1-R7)
+# MCU Deterministic Rule Thresholds  (Rules R1-R11)
 # ----------------------------------------------------------
 rules:
   # R1 – Sensor sanity / fault detection
@@ -34,6 +34,18 @@ rules:
   # R7 – Alert throttle and heartbeat
   alert_throttle_s:       60.0   # seconds between repeated alerts
   heartbeat_every_n:      10     # emit heartbeat every N cycles
+
+  # R8 – Attitude error critical (2 consecutive samples)
+  attitude_error_critical_deg: 30.0
+
+  # R9 – Gyro spike detection (single sample)
+  gyro_spike_threshold_rad_s: 1.5
+
+  # R10 – Accelerometer total failure (near-zero reading = dead sensor)
+  accel_dead_threshold_m_s2: 0.1
+
+  # R11 – Angular velocity tumble (3 consecutive samples)
+  angular_velocity_tumble_rad_s: 0.4
 
 # ----------------------------------------------------------
 # AI Model Thresholds
@@ -86,21 +98,29 @@ anomaly_injection:
   enabled:         true
   injection_rate:  0.05        # fraction of samples that receive an anomaly
 
-  # Weights must sum to 1.0
+  # Weights must sum to 1.0  (21 types: 13 EPS + 4 attitude + 4 IMU)
   weights:
-    batt_overheat:          0.15
-    batt_undervoltage:      0.12
-    batt_overvoltage:       0.10
-    batt_overcurrent:       0.08
-    solar_fault:            0.10
-    converter_failure:      0.08
-    eps_overheat:           0.07
-    sensor_fault:           0.05
-    battery_degradation:    0.08
-    progressive_overheat:   0.06
-    oscillation_coupled:    0.05
-    solar_partial_failure:  0.04
+    batt_overheat:          0.12
+    batt_undervoltage:      0.10
+    batt_overvoltage:       0.08
+    batt_overcurrent:       0.06
+    solar_fault:            0.08
+    converter_failure:      0.06
+    eps_overheat:           0.06
+    sensor_fault:           0.04
+    battery_degradation:    0.06
+    progressive_overheat:   0.05
+    oscillation_coupled:    0.04
+    solar_partial_failure:  0.03
     unknown_pattern:        0.02
+    attitude_drift:         0.04
+    attitude_tumble:        0.03
+    attitude_freeze:        0.03
+    pointing_loss:          0.02
+    gyro_bias_fault:        0.03
+    gyro_spike_fault:       0.03
+    accelerometer_failure:  0.02
+    magnetometer_anomaly:   0.02
 
 # ----------------------------------------------------------
 # Normal Sensor Operating Ranges

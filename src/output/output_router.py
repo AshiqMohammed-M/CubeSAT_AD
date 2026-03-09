@@ -33,6 +33,7 @@ logger = logging.getLogger("output_router")
 _UART_FIELDS = [
     "timestamp", "V_batt", "I_batt", "T_batt", "V_solar", "I_solar",
     "V_bus", "I_bus", "T_eps", "SOC", "anomaly_type", "anomaly_active",
+    "attitude_error_deg", "gyro_magnitude", "accel_magnitude",
 ]
 
 # InfluxDB tag keys (categorical, not numeric)

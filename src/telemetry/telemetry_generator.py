@@ -45,6 +45,9 @@ _DEFAULT_CONFIG = {
     }
 }
 
+# Reference quaternion: perfect nadir pointing [w, x, y, z]
+_REF_QUAT = np.array([1.0, 0.0, 0.0, 0.0])
+
 # Schema metadata: (unit, expected_min, expected_max)
 _SCHEMA: dict = {
     # --- Orbital fields from SimulationEngine ---
@@ -61,6 +64,30 @@ _SCHEMA: dict = {
     "gyroscope_rad_s":      ("rad/s", -1.0,  1.0),
     "accelerometer_m_s2":   ("m/s²", -15.0, 15.0),
     "magnetometer_uT":      ("µT",   -60.0,  60.0),
+    # --- Flattened attitude / IMU scalar fields ---
+    "quaternion_w":          ("",      -1.0,  1.0),
+    "quaternion_x":          ("",      -1.0,  1.0),
+    "quaternion_y":          ("",      -1.0,  1.0),
+    "quaternion_z":          ("",      -1.0,  1.0),
+    "roll_deg":              ("deg",   -180.0, 180.0),
+    "pitch_deg":             ("deg",   -90.0,  90.0),
+    "yaw_deg":               ("deg",   -180.0, 180.0),
+    "angular_velocity_x":    ("rad/s", -1.0,   1.0),
+    "angular_velocity_y":    ("rad/s", -1.0,   1.0),
+    "angular_velocity_z":    ("rad/s", -1.0,   1.0),
+    "gyro_x":                ("rad/s", -1.0,   1.0),
+    "gyro_y":                ("rad/s", -1.0,   1.0),
+    "gyro_z":                ("rad/s", -1.0,   1.0),
+    "accel_x":               ("m/s²", -15.0,  15.0),
+    "accel_y":               ("m/s²", -15.0,  15.0),
+    "accel_z":               ("m/s²", -15.0,  15.0),
+    "mag_x":                 ("µT",   -60.0,  60.0),
+    "mag_y":                 ("µT",   -60.0,  60.0),
+    "mag_z":                 ("µT",   -60.0,  60.0),
+    "attitude_error_deg":    ("deg",    0.0,  180.0),
+    "gyro_magnitude":        ("rad/s",  0.0,  None),
+    "accel_magnitude":       ("m/s²",   0.0,  None),
+    "angular_velocity_magnitude": ("rad/s", 0.0, None),
     # --- EPS sensor fields ---
     "V_batt":   ("V",   7.2,   8.4),
     "I_batt":   ("A",  -2.5,   2.5),
@@ -188,6 +215,9 @@ class TelemetryGenerator:
         # Merge: sim_step fields first, then EPS fields overwrite orbit_sunlight
         merged = {**sim_step, **eps_data}
 
+        # ── Flatten attitude / IMU vectors into scalar fields ────────
+        merged = self._flatten_attitude_imu(merged)
+
         return merged
 
     # ------------------------------------------------------------------
@@ -211,6 +241,81 @@ class TelemetryGenerator:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Attitude / IMU flattening
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _compute_attitude_error(q: list) -> float:
+        """Angular distance (deg) between quaternion *q* and nadir reference."""
+        q_arr = np.asarray(q, dtype=np.float64)
+        dot = float(np.dot(q_arr, _REF_QUAT))
+        # Clamp for numerical safety
+        dot = max(-1.0, min(1.0, abs(dot)))
+        return float(2.0 * np.degrees(np.arccos(dot)))
+
+    @staticmethod
+    def _flatten_attitude_imu(merged: dict) -> dict:
+        """Add scalar attitude/IMU keys derived from vector fields."""
+        # Quaternion components
+        q = merged.get("quaternion", [1.0, 0.0, 0.0, 0.0])
+        if isinstance(q, np.ndarray):
+            q = q.tolist()
+        merged["quaternion_w"] = float(q[0])
+        merged["quaternion_x"] = float(q[1])
+        merged["quaternion_y"] = float(q[2])
+        merged["quaternion_z"] = float(q[3])
+
+        # Euler angles
+        euler = merged.get("euler_angles_deg", [0.0, 0.0, 0.0])
+        if isinstance(euler, np.ndarray):
+            euler = euler.tolist()
+        merged["roll_deg"]  = float(euler[0])
+        merged["pitch_deg"] = float(euler[1])
+        merged["yaw_deg"]   = float(euler[2])
+
+        # Angular velocity
+        av = merged.get("angular_velocity_rad_s", [0.0, 0.0, 0.0])
+        if isinstance(av, np.ndarray):
+            av = av.tolist()
+        merged["angular_velocity_x"] = float(av[0])
+        merged["angular_velocity_y"] = float(av[1])
+        merged["angular_velocity_z"] = float(av[2])
+        merged["angular_velocity_magnitude"] = float(
+            np.linalg.norm(av)
+        )
+
+        # Gyroscope
+        gyro = merged.get("gyroscope_rad_s", [0.0, 0.0, 0.0])
+        if isinstance(gyro, np.ndarray):
+            gyro = gyro.tolist()
+        merged["gyro_x"] = float(gyro[0])
+        merged["gyro_y"] = float(gyro[1])
+        merged["gyro_z"] = float(gyro[2])
+        merged["gyro_magnitude"] = float(np.linalg.norm(gyro))
+
+        # Accelerometer
+        acc = merged.get("accelerometer_m_s2", [0.0, 0.0, 0.0])
+        if isinstance(acc, np.ndarray):
+            acc = acc.tolist()
+        merged["accel_x"] = float(acc[0])
+        merged["accel_y"] = float(acc[1])
+        merged["accel_z"] = float(acc[2])
+        merged["accel_magnitude"] = float(np.linalg.norm(acc))
+
+        # Magnetometer
+        mag = merged.get("magnetometer_uT", [0.0, 0.0, 0.0])
+        if isinstance(mag, np.ndarray):
+            mag = mag.tolist()
+        merged["mag_x"] = float(mag[0])
+        merged["mag_y"] = float(mag[1])
+        merged["mag_z"] = float(mag[2])
+
+        # Attitude error (angular distance from nadir reference)
+        merged["attitude_error_deg"] = TelemetryGenerator._compute_attitude_error(q)
+
+        return merged
 
     @staticmethod
     def _fallback_eps(in_sunlight: bool, ts_dt: datetime) -> dict:
