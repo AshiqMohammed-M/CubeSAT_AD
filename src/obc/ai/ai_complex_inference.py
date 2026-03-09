@@ -258,13 +258,20 @@ class OBC_AI:
         logger.info("Using simulated analysis")
         
         try:
-            # Simulation based on average temperature and other metrics
-            avg_temp = np.mean(sequence_data[:, 2])  # T_batt
-            avg_current = np.mean(sequence_data[:, 1])  # I_batt
-            avg_voltage = np.mean(sequence_data[:, 0])  # V_batt
-            
+            # Simulation based on average EPS metrics vs normal operating ranges
+            avg_temp    = np.mean(sequence_data[:, 2])         # T_batt (°C)
+            avg_current = np.mean(np.abs(sequence_data[:, 1])) # |I_batt| (A)
+            avg_voltage = np.mean(sequence_data[:, 0])         # V_batt (V)
+
             # Simulated anomaly detection logic
-            if avg_temp > 60 or avg_current > 3.0:
+            # CRITICAL: temperature above threshold OR clear overcurrent
+            is_critical = avg_temp > 60.0 or avg_current > 3.0
+            # WARNING: elevated temperature OR elevated current OR low voltage
+            #   avg_voltage < 7.0 catches undervoltage (normal range: 7.2–8.4 V)
+            #   avg_current > 2.5 catches overcurrent (normal max: 2.5 A absolute)
+            is_warning  = avg_temp > 45.0 or avg_current > 2.5 or avg_voltage < 7.0
+
+            if is_critical:
                 result = {
                     "ai_score": 0.95,
                     "ai_level": "CRITICAL",
@@ -278,11 +285,11 @@ class OBC_AI:
                         "avg_voltage": float(avg_voltage)
                     }
                 }
-            elif avg_temp > 45 or avg_current > 2.0 or avg_voltage < 3.2:
+            elif is_warning:
                 result = {
                     "ai_score": 0.75,
                     "ai_level": "WARNING",
-                    "confidence": "MEDIUM", 
+                    "confidence": "MEDIUM",
                     "reconstruction_error": 0.75,
                     "simulated": True,
                     "model_used": "Simulation Rules",
