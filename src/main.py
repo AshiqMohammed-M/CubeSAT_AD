@@ -18,11 +18,16 @@ import argparse
 import logging
 import signal
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
+import uvicorn
 import yaml
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
 # Ensure project root is on sys.path so "src.*" absolute imports resolve.
@@ -53,6 +58,57 @@ try:
     from src.obc.obc_main import OBCSystem  # noqa: F401
 except Exception:
     OBCSystem = None  # OBC optional at pipeline level
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Cesium inject controls use a human-readable label that differs from the
+# internal anomaly catalog used by the telemetry pipeline.
+ANOMALY_NAME_MAP = {
+    "battery_overheat": "batt_overheat",
+}
+
+
+class InjectRequest(BaseModel):
+    anomaly_type: str
+
+
+_api_anomaly_injector: AnomalyInjector | None = None
+_api_thread_started = False
+
+
+@app.post("/api/inject")
+def inject(req: InjectRequest):
+    try:
+        if _api_anomaly_injector is None:
+            raise RuntimeError("Anomaly injector not initialized")
+
+        normalised = ANOMALY_NAME_MAP.get(req.anomaly_type, req.anomaly_type)
+        _api_anomaly_injector.force_inject(normalised)
+        return {"status": "ok", "anomaly_type": normalised}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
+
+
+def start_api() -> None:
+    uvicorn.run(app, host="0.0.0.0", port=5000, log_level="warning")
+
+
+def _ensure_api_started() -> None:
+    global _api_thread_started
+
+    if _api_thread_started:
+        return
+
+    threading.Thread(target=start_api, daemon=True, name="inject-api").start()
+    _api_thread_started = True
 
 # ---------------------------------------------------------------------------
 # Counters (updated by the step callback; read by the shutdown handler)
@@ -307,7 +363,7 @@ def run_batch(
 # ---------------------------------------------------------------------------
 
 def main(argv=None) -> None:
-    global _output_router, _pipeline_logger
+    global _api_anomaly_injector, _output_router, _pipeline_logger
 
     args = _parse_args(argv)
 
@@ -332,6 +388,7 @@ def main(argv=None) -> None:
         injection_rate=inj_cfg.get("injection_rate", 0.05),
         anomaly_weights=inj_cfg.get("weights", None),
     )
+    _api_anomaly_injector = anomaly_injector
 
     sim_cfg = cfg.get("simulation", {})
     simulation_engine = SimulationEngine(
@@ -355,6 +412,7 @@ def main(argv=None) -> None:
 
     # ── Start transports ─────────────────────────────────────────────────
     output_router.start()
+    _ensure_api_started()
 
     logger.info(
         "Pipeline ready │ mode=%s │ duration=%.0f s │ rate=%.1f Hz │ anomaly_rate=%.2f",
