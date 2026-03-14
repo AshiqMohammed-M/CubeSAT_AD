@@ -35,6 +35,15 @@ const SCHEMA_PATH        = path.join(__dirname, 'schema.json');
 const app    = express();
 const server = http.createServer(app);
 
+// ── CORS — required for Codespaces port-forwarded URLs ──────────────────────
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin',  '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 // Serve OpenMCT from node_modules
 const openmctPath = path.join(__dirname, 'node_modules', 'openmct', 'dist');
 if (fs.existsSync(openmctPath)) {
@@ -214,8 +223,9 @@ app.get('/', (_req, res) => {
     }));
 
     // EPS Guardian plugin
+    // Use wss:// when served over HTTPS (Codespaces), ws:// for localhost
     openmct.install(EPSTelemetryPlugin({
-      wsUrl:     'ws://' + location.host,
+      wsUrl:     (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host,
       schemaUrl: '/api/telemetry/schema',
     }));
 

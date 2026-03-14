@@ -275,64 +275,70 @@ class OutputRouter:
         # The telemetry "timestamp" field is mission-elapsed seconds, not Unix.
         unix_ms = int(time.time() * 1000)
 
-        # Build one envelope per numeric field (OpenMCT format)
-        envelopes = []
+        # ── Build all outbound messages ────────────────────────────────────
+        messages: list = []
+
+        # 1. OpenMCT per-field envelopes.
+        #    bool is checked BEFORE (int, float) because bool is a subclass of
+        #    int in Python — without this order, bools would be sent as 0/1
+        #    floats and OpenMCT could misinterpret them.
         for key, value in telemetry.items():
-            if isinstance(value, (int, float)) and key != "timestamp":
-                envelopes.append(json.dumps({
-                    "id": key,
-                    "timestamp": unix_ms,
-                    "value": value,
-                }))
-            elif isinstance(value, bool):
-                envelopes.append(json.dumps({
-                    "id": key,
-                    "timestamp": unix_ms,
-                    "value": int(value),
-                }))
+            if key == "timestamp":
+                continue
+            if isinstance(value, bool):
+                messages.append(json.dumps(
+                    {"id": key, "timestamp": unix_ms, "value": int(value)}
+                ))
+            elif isinstance(value, (int, float)):
+                messages.append(json.dumps(
+                    {"id": key, "timestamp": unix_ms, "value": value}
+                ))
 
-        dead_clients = set()
-
-        # 1. OpenMCT per-field envelopes (numeric / bool fields only)
-        if envelopes:
-            for ws in list(self._ws_clients):
-                for msg in envelopes:
-                    try:
-                        future = asyncio.run_coroutine_threadsafe(
-                            ws.send(msg), self._ws_loop,
-                        )
-                        future.result(timeout=2)
-                    except Exception:
-                        dead_clients.add(ws)
-                        break
-
-        # 2. Cesium 3-D dashboard full-snapshot
-        #    Includes string fields (mcu_alert, anomaly_type) that the OpenMCT
-        #    envelope loop skips, so the Cesium client can colour the satellite
-        #    correctly without local threshold inference.
+        # 2. Cesium 3-D dashboard full-snapshot (includes string alert fields
+        #    so the satellite can be coloured without client-side inference).
         _CESIUM_KEYS = (
             "latitude_deg", "longitude_deg", "altitude_km",
             "V_batt", "T_batt", "SOC",
             "mcu_alert", "anomaly_type", "anomaly_active",
             "attitude_error_deg",
         )
-        cesium_msg = json.dumps(
+        messages.append(json.dumps(
             {
                 "type": "cesium_telemetry",
                 "timestamp": unix_ms,
                 **{k: telemetry[k] for k in _CESIUM_KEYS if k in telemetry},
             },
             separators=(",", ":"),
-        )
-        for ws in list(self._ws_clients):
-            try:
-                asyncio.run_coroutine_threadsafe(
-                    ws.send(cesium_msg), self._ws_loop,
-                ).result(timeout=2)
-            except Exception:
-                dead_clients.add(ws)
+        ))
 
-        self._ws_clients -= dead_clients
+        # ── Fan-out to ALL clients concurrently in a single await ──────────
+        # One asyncio.gather call delivers to every client simultaneously,
+        # so a slow/dead client never delays another.
+        future = asyncio.run_coroutine_threadsafe(
+            self._broadcast_all(messages), self._ws_loop,
+        )
+        try:
+            future.result(timeout=5)
+        except Exception as exc:
+            logger.warning("WebSocket broadcast error: %s", exc)
+
+    async def _broadcast_all(self, messages: list) -> None:
+        """Fan-out a list of serialised messages to every connected client."""
+        if not self._ws_clients or not messages:
+            return
+
+        async def _send_one(ws) -> None:
+            try:
+                for msg in messages:
+                    await ws.send(msg)
+            except Exception as exc:
+                logger.debug("WebSocket client dropped during broadcast: %s", exc)
+                self._ws_clients.discard(ws)
+
+        await asyncio.gather(
+            *[_send_one(ws) for ws in list(self._ws_clients)],
+            return_exceptions=True,
+        )
 
     # ==================================================================
     #  TRANSPORT 3 – InfluxDB
