@@ -24,11 +24,19 @@ npm install
 
 ## Start the dashboard
 
+**Recommended (one command from repo root):**
+
+```bash
+bash start_all.sh
+```
+
+**Manual mode:**
+
 **Terminal 1 — Python telemetry pipeline**
 
 ```bash
 # From the project root
-python src/main.py --mode realtime --no-serial
+.venv/bin/python src/main.py --mode realtime --no-serial --no-influx
 ```
 
 **Terminal 2 — Cesium Node server**
@@ -46,9 +54,10 @@ Without public port visibility the WebSocket connection will be blocked.
 
 1. Open the **Ports** panel in VS Code  
    *(bottom panel → Ports tab, or Ctrl+Shift+P → "Forward a Port")*
-2. Forward **port 8081** → set Visibility to **Public**
-3. Forward **port 8765** → set Visibility to **Public**
-4. Click the 🌐 globe icon next to port **8081** to open the dashboard
+2. Forward **port 5000** → set Visibility to **Public** *(Inject API)*
+3. Forward **port 8081** → set Visibility to **Public**
+4. Forward **port 8765** → set Visibility to **Public**
+5. Click the 🌐 globe icon next to port **8081** to open the dashboard
 
 ---
 
@@ -72,13 +81,13 @@ Add your free token from cesium.com/ion to index.html
 Cesium.Ion.defaultAccessToken = 'your_token_here';
 ```
 
-The dashboard still works without a token — it uses bundled NaturalEarthII
-imagery instead of the darker "Earth at Night" style.
+The dashboard uses Ion-backed imagery with a runtime fallback. Keep the token
+configured for best globe texture quality.
 
 **DISCONNECTED badge / no telemetry**
 
 - Check the Python pipeline is running: `python src/main.py --mode realtime --no-serial`
-- In Codespaces: confirm **both** ports 8080 and 8765 are set to **Public**
+- In Codespaces: confirm ports **5000**, **8081**, and **8765** are set to **Public**
 - The WebSocket URL is derived dynamically from the page hostname — no
   manual configuration needed.
 
@@ -99,7 +108,7 @@ dashboard/
     ├── index.html    ← Full-screen CesiumJS globe + status overlay
     ├── satellite.js  ← Satellite entity, orbit trail, anomaly colouring
     ├── telemetry.js  ← WebSocket client + UI update logic
-    ├── server.js     ← Express static server (port 8080)
+    ├── server.js     ← Express static server (port 8081)
     ├── package.json
     └── README.md
 ```
