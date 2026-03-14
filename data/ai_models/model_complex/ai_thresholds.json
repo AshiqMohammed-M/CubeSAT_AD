@@ -1,23 +1,23 @@
 {
   "anomaly_thresholds": {
-    "normal_threshold": 0.6091226281233376,
-    "warning_threshold": 0.8377888951216337,
-    "critical_threshold": 1.0664551621199299,
+    "normal_threshold": 0.8189054232234838,
+    "warning_threshold": 0.9462655625250035,
+    "critical_threshold": 1.0736257018265232,
     "training_stats": {
-      "mean_error": 0.38045636112504155,
-      "std_error": 0.22866626699829606,
-      "min_error": 0.03640969871822971,
-      "max_error": 1.1844010416516693,
-      "training_samples": 949
+      "mean_error": 0.691545283921964,
+      "std_error": 0.12736013930151974,
+      "min_error": 0.437321853975792,
+      "max_error": 1.3156435795240013,
+      "training_samples": 948
     }
   },
-  "training_date": "2025-10-23T16:52:02.082404",
+  "training_date": "2026-03-14T16:11:31.602295",
   "model_architecture": "LSTM Autoencoder",
   "input_shape": [
     30,
-    7
+    14
   ],
   "dataset_info": {},
-  "training_samples": 949,
+  "training_samples": 948,
   "validation_samples": 238
 }

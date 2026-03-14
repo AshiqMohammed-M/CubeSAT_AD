@@ -1,0 +1,26 @@
+{
+  "model_path": "data/ai_models/model_complex/ai_model_lstm_autoencoder_quant.tflite",
+  "model_size_bytes": 331816,
+  "model_size_kb": 324.0390625,
+  "input_shape": [
+    1,
+    30,
+    14
+  ],
+  "output_shape": [
+    1,
+    30,
+    14
+  ],
+  "input_dtype": "float32",
+  "tensor_dtypes": [
+    "float32",
+    "int32",
+    "object"
+  ],
+  "quantization": "float32",
+  "estimated_tensor_memory_bytes": 87192,
+  "estimated_tensor_memory_kb": 85.1484375,
+  "inference_time_ms": null,
+  "inference_error": "Select TensorFlow op(s), included in the given model, is(are) not supported by this interpreter. Make sure you apply/link the Flex delegate before inference. For the Android, it can be resolved by adding \"org.tensorflow:tensorflow-lite-select-tf-ops\" dependency. See instructions: https://www.tensorflow.org/lite/guide/ops_selectNode number 1 (FlexTensorListReserve) failed to prepare."
+}
