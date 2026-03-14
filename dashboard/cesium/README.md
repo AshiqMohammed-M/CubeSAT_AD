@@ -46,9 +46,9 @@ Without public port visibility the WebSocket connection will be blocked.
 
 1. Open the **Ports** panel in VS Code  
    *(bottom panel → Ports tab, or Ctrl+Shift+P → "Forward a Port")*
-2. Forward **port 8080** → set Visibility to **Public**
+2. Forward **port 8081** → set Visibility to **Public**
 3. Forward **port 8765** → set Visibility to **Public**
-4. Click the 🌐 globe icon next to port **8080** to open the dashboard
+4. Click the 🌐 globe icon next to port **8081** to open the dashboard
 
 ---
 
