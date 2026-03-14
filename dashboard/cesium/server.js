@@ -1,7 +1,7 @@
 /**
  * server.js — Express static-file server for the Cesium dashboard.
  *
- * Serves dashboard/cesium/ on port 8080 with full CORS headers so the page
+ * Serves dashboard/cesium/ on port 8081 with full CORS headers so the page
  * works when the Codespaces Ports panel forwards it to a public URL.
  *
  * Usage:
@@ -14,7 +14,7 @@ const express = require('express');
 const path    = require('path');
 
 const app  = express();
-const PORT = 8080;
+const PORT = 8081;
 
 // ── CORS — required for Codespaces port-forwarded URLs ──────────────────────
 app.use(function (req, res, next) {
@@ -41,8 +41,8 @@ app.get('/config', function (req, res) {
 app.listen(PORT, function () {
   console.log('');
   console.log('  Cesium dashboard : http://localhost:' + PORT);
-  console.log('  WebSocket bridge : ws://localhost:8765');
-  console.log('  In Codespaces    : forward both ports 8080 and 8765');
-  console.log('  Set ports to PUBLIC visibility in the Ports panel');
+  console.log('  WebSocket        : ws://localhost:8765   (direct — forward as PUBLIC)');
+  console.log('  In Codespaces    : forward ports 8081 and 8765 as PUBLIC');
+  console.log('  (Port 8080 = OpenMCT, forward that too if running both dashboards)');
   console.log('');
 });

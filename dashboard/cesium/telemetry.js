@@ -23,8 +23,8 @@
         window.location.hostname === '127.0.0.1') {
       return 'ws://localhost:8765';
     }
-    // Codespaces forwards ports via subdomain replacement
-    var host = window.location.hostname.replace('-8080', '-8765');
+    // In Codespaces: page is on -8081 subdomain, WebSocket is on -8765 subdomain
+    var host = window.location.hostname.replace('-8081', '-8765');
     return 'wss://' + host;
   }
 
