@@ -206,14 +206,7 @@
   /* Get free token at cesium.com/ion */
   Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZmM1YjUzYy02ODAzLTQ2N2UtODY4Ni1kYTk2YWQxOWIzMjciLCJpZCI6NDAwOTE1LCJpYXQiOjE3NzMwNzg4MTN9.I5NsyiDTgrFPSq9uYcxhMhVNXTqyhgwRIBa4IUvgkAc';
 
-  // Bundled NaturalEarthII imagery — works without a token.
-  // Upgrade to Ion Asset 3812 ("Earth at Night") by replacing the
-  // imageryProvider line below once you have a token:
-  //   imageryProvider: new Cesium.IonImageryProvider({ assetId: 3812 })
   window.cesiumViewer = new Cesium.Viewer('cesiumContainer', {
-    imageryProvider: new Cesium.TileMapServiceImageryProvider({
-      url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
-    }),
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),
     baseLayerPicker:       false,
     geocoder:              false,
@@ -228,6 +221,26 @@
     // Reduces GPU usage ~80 % — critical for Codespaces-forwarded URLs
     requestRenderMode:          true,
     maximumRenderTimeChange:    Infinity,
+  });
+
+  async function setEarthImagery() {
+    cesiumViewer.imageryLayers.removeAll();
+    try {
+      var ionProvider = await Cesium.IonImageryProvider.fromAssetId(2);
+      cesiumViewer.imageryLayers.addImageryProvider(ionProvider);
+    } catch (error) {
+      console.warn('[IMAGERY FALLBACK]', error);
+      var fallbackProvider = await Cesium.createWorldImageryAsync({
+        style: Cesium.IonWorldImageryStyle.AERIAL
+      });
+      cesiumViewer.imageryLayers.addImageryProvider(fallbackProvider);
+    }
+
+    cesiumViewer.scene.requestRender();
+  }
+
+  setEarthImagery().catch(function (error) {
+    console.error('[IMAGERY ERROR]', error);
   });
 
   // Enhance visual depth
@@ -245,24 +258,61 @@
 
 <!-- ── Inject button logic ──────────────────────────────────────────────── -->
 <script>
+  function showInjectError(error) {
+    var panel = document.getElementById('statusPanel');
+    var anomalyType = document.getElementById('anomalyType');
+    var lastUpdate = document.getElementById('lastUpdate');
+
+    console.error('[INJECT ERROR]', error);
+    anomalyType.textContent = 'inject failed';
+    lastUpdate.textContent = (error && error.message) ? error.message : 'inject request failed';
+    panel.classList.remove('flash-warning');
+    panel.classList.add('flash-critical');
+    setTimeout(function () {
+      panel.classList.remove('flash-critical');
+    }, 700);
+  }
+
   function injectTestAnomaly() {
     var btn = document.getElementById('injectBtn');
+    var anomalyType = document.getElementById('anomalyType');
+    var lastUpdate = document.getElementById('lastUpdate');
     btn.disabled = true;
+    anomalyType.textContent = 'injecting...';
+    lastUpdate.textContent = 'sending request';
 
     // Dynamic API host so Codespaces forwarding works
     var apiBase = (
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1'
     ) ? 'http://localhost:5000'
-      : 'https://' + window.location.hostname.replace('-8080', '-5000');
+      : 'https://' + window.location.hostname.replace('-8081', '-5000');
 
     fetch(apiBase + '/api/inject', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ anomaly_type: 'battery_overheat' }),
-    }).catch(function () {}); // fire-and-forget
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function (payload) {
+        if (!payload || payload.status !== 'ok') {
+          throw new Error((payload && payload.message) ? payload.message : 'inject request failed');
+        }
 
-    setTimeout(function () { btn.disabled = false; }, 5000);
+        anomalyType.textContent = payload.anomaly_type;
+        lastUpdate.textContent = 'inject requested';
+      })
+      .catch(function (error) {
+        showInjectError(error);
+      })
+      .finally(function () {
+        setTimeout(function () { btn.disabled = false; }, 5000);
+      });
   }
 
   // Called by telemetry.js when alert level changes
