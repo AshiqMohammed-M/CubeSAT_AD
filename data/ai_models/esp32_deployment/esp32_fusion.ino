@@ -644,28 +644,44 @@ void send_classification(Severity severity, float error_value, uint32_t sample_i
   Serial.write(static_cast<uint8_t>(0x00));
 }
 
-void setup_tflm() {
+bool setup_tflm() {
+  constexpr uint32_t arena_size = TENSOR_ARENA_SIZE;
+  static uint8_t *arena_psram = nullptr;
+  if (arena_psram == nullptr) {
+    arena_psram = static_cast<uint8_t *>(ps_malloc(arena_size));
+  }
+
+  if (arena_psram == nullptr) {
+    Serial.println("[TFLM] Arena alloc failed in PSRAM");
+    g_tflm_ready = false;
+    return false;
+  }
+  Serial.printf("[TFLM] Arena: %u bytes in PSRAM\n", arena_size);
+
   g_model = tflite::GetModel(g_model_data);
+  Serial.printf("[TFLM] Model version: %d\n", g_model->version());
   if (g_model->version() != TFLITE_SCHEMA_VERSION) {
     Serial.println("TFLITE SCHEMA MISMATCH");
     g_tflm_ready = false;
-    return;
+    return false;
   }
 
+  static tflite::AllOpsResolver local_resolver;
   static tflite::MicroInterpreter static_interpreter(
       g_model,
-      g_resolver,
-      g_tensor_arena,
-      TENSOR_ARENA_SIZE);
+      local_resolver,
+      arena_psram,
+      arena_size);
 
   g_interpreter = &static_interpreter;
 
   const TfLiteStatus alloc_status = g_interpreter->AllocateTensors();
   if (alloc_status != kTfLiteOk) {
-    Serial.printf("TFLITE ALLOC FAIL: %d\n", static_cast<int>(alloc_status));
+    Serial.printf("[TFLM] ALLOC FAIL: %d\n", static_cast<int>(alloc_status));
     g_tflm_ready = false;
-    return;
+    return false;
   }
+  Serial.println("[TFLM] AllocateTensors OK");
 
   g_input_tensor = g_interpreter->input(0);
   g_output_tensor = g_interpreter->output(0);
@@ -673,7 +689,24 @@ void setup_tflm() {
 
   if (!g_tflm_ready) {
     Serial.println("TFLITE TENSOR HANDLE FAIL");
+    return false;
   }
+
+  if (g_input_tensor->dims != nullptr && g_input_tensor->dims->size >= 3) {
+    Serial.printf(
+        "[TFLM] Input shape: [%d, %d, %d]\n",
+        g_input_tensor->dims->data[0],
+        g_input_tensor->dims->data[1],
+        g_input_tensor->dims->data[2]);
+  } else {
+    Serial.println("[TFLM] Input shape unavailable");
+  }
+
+  if (g_input_tensor->type != kTfLiteFloat32) {
+    Serial.printf("[TFLM] WARNING: input type is %d (expected kTfLiteFloat32)\n", g_input_tensor->type);
+  }
+
+  return true;
 }
 
 // -------------------- Arduino lifecycle --------------------
