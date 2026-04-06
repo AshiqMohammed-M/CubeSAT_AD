@@ -41,8 +41,8 @@
 
 // -------------------- Includes and defines --------------------
 constexpr uint32_t UART_BAUD_RATE = 115200;
-constexpr uint8_t I2C_SDA_PIN = 21;
-constexpr uint8_t I2C_SCL_PIN = 22;
+constexpr uint8_t I2C_SDA_PIN = 8;
+constexpr uint8_t I2C_SCL_PIN = 9;
 
 constexpr size_t WINDOW_SIZE = 30;
 constexpr size_t FEATURE_COUNT = 14;
@@ -59,8 +59,8 @@ constexpr float THRESH_CRITICAL = 1.0664551621f;
 
 constexpr uint8_t FALLBACK_LED_PIN = 2;
 // Input buffer footprint for [30,14] float32 is 30*14*4 = 1680 bytes.
-// Arena is set below 350KB target while leaving room for model intermediates.
-constexpr size_t TENSOR_ARENA_SIZE = 300 * 1024;
+// Arena is set below 400KB target while leaving room for model intermediates.
+constexpr size_t TENSOR_ARENA_SIZE = 400 * 1024;
 
 // -------------------- Global state --------------------
 const tflite::Model *g_model = nullptr;
