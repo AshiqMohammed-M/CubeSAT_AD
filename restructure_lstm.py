@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Restructure an LSTM autoencoder into a TFLite-native model without Select TF ops."""
+"""Restructure an LSTM autoencoder into a TILE-free, TFLite-native architecture."""
 
 from __future__ import annotations
 
@@ -19,6 +19,9 @@ PRESERVED_THRESHOLDS = {
     "warning": 0.8378,
     "critical": 1.0665,
 }
+TARGET_TIMESTEPS = 30
+TARGET_FEATURES = 14
+TARGET_LATENT = 32
 
 
 def _find_existing_path(candidates: Sequence[Path], label: str) -> Path | None:
@@ -34,52 +37,8 @@ def _find_existing_path(candidates: Sequence[Path], label: str) -> Path | None:
     return None
 
 
-def _convert_layer(source_layer: tf.keras.layers.Layer) -> tf.keras.layers.Layer:
-    if isinstance(source_layer, tf.keras.layers.LSTM):
-        cell = tf.keras.layers.LSTMCell(
-            units=source_layer.units,
-            activation=source_layer.activation,
-            recurrent_activation=source_layer.recurrent_activation,
-            use_bias=source_layer.use_bias,
-            unit_forget_bias=source_layer.unit_forget_bias,
-            dropout=source_layer.dropout,
-            recurrent_dropout=source_layer.recurrent_dropout,
-            name=f"{source_layer.name}_cell",
-        )
-        return tf.keras.layers.RNN(
-            cell,
-            return_sequences=source_layer.return_sequences,
-            go_backwards=source_layer.go_backwards,
-            unroll=True,
-            name=source_layer.name,
-        )
-
-    if isinstance(source_layer, tf.keras.layers.RepeatVector):
-        return tf.keras.layers.RepeatVector(source_layer.n, name=source_layer.name)
-
-    if isinstance(source_layer, tf.keras.layers.Dense):
-        return tf.keras.layers.Dense(
-            units=source_layer.units,
-            activation=source_layer.activation,
-            use_bias=source_layer.use_bias,
-            name=source_layer.name,
-        )
-
-    if isinstance(source_layer, tf.keras.layers.TimeDistributed):
-        inner = source_layer.layer
-        if isinstance(inner, tf.keras.layers.Dense):
-            wrapped_dense = tf.keras.layers.Dense(
-                units=inner.units,
-                activation=inner.activation,
-                use_bias=inner.use_bias,
-                name=inner.name,
-            )
-            return tf.keras.layers.TimeDistributed(wrapped_dense, name=source_layer.name)
-        raise ValueError(
-            f"Unsupported TimeDistributed inner layer in source model: {inner.__class__.__name__}"
-        )
-
-    raise ValueError(f"Unsupported source layer type: {source_layer.name} ({source_layer.__class__.__name__})")
+def _source_layer_map(source_model: tf.keras.Model) -> dict[str, tf.keras.layers.Layer]:
+    return {layer.name: layer for layer in source_model.layers}
 
 
 def _weights_are_compatible(source_weights: Iterable, target_weights: Iterable) -> bool:
@@ -96,34 +55,71 @@ def _weights_are_compatible(source_weights: Iterable, target_weights: Iterable) 
     return True
 
 
-def _build_restructured_model(
-    source_model: tf.keras.Model,
-) -> Tuple[tf.keras.Model, List[Tuple[tf.keras.layers.Layer, tf.keras.layers.Layer]]]:
+def _build_restructured_model(source_model: tf.keras.Model) -> tf.keras.Model:
     input_shape = tuple(source_model.input_shape[1:])
-    if len(input_shape) != 2:
-        raise ValueError(f"Expected 3D input shape [batch, timesteps, features], got: {source_model.input_shape}")
+    if input_shape != (TARGET_TIMESTEPS, TARGET_FEATURES):
+        raise ValueError(
+            "Expected input shape [30, 14], "
+            f"got: {source_model.input_shape}"
+        )
+
+    source_layers = _source_layer_map(source_model)
+    source_enc1 = source_layers.get("encoder_lstm1")
+    if not isinstance(source_enc1, tf.keras.layers.LSTM):
+        raise ValueError("Source layer 'encoder_lstm1' was not found as LSTM")
 
     inputs = tf.keras.Input(shape=input_shape, name="input_layer")
-    x = inputs
-    layer_pairs: List[Tuple[tf.keras.layers.Layer, tf.keras.layers.Layer]] = []
+    x = tf.keras.layers.RNN(
+        tf.keras.layers.LSTMCell(
+            units=64,
+            activation=source_enc1.activation,
+            recurrent_activation=source_enc1.recurrent_activation,
+            use_bias=source_enc1.use_bias,
+            unit_forget_bias=source_enc1.unit_forget_bias,
+            dropout=source_enc1.dropout,
+            recurrent_dropout=source_enc1.recurrent_dropout,
+            name="encoder_lstm1_cell",
+        ),
+        return_sequences=False,
+        unroll=True,
+        name="encoder_lstm1",
+    )(inputs)
 
-    for source_layer in source_model.layers:
-        if isinstance(source_layer, tf.keras.layers.InputLayer):
-            continue
+    latent = tf.keras.layers.Dense(TARGET_LATENT, activation="relu", name="latent_dense")(x)
+    decoder_hidden = tf.keras.layers.Dense(TARGET_LATENT, activation="relu", name="decoder_dense")(latent)
+    flat_output = tf.keras.layers.Dense(
+        TARGET_TIMESTEPS * TARGET_FEATURES,
+        activation="linear",
+        name="decoder_projection",
+    )(decoder_hidden)
+    outputs = tf.keras.layers.Reshape((TARGET_TIMESTEPS, TARGET_FEATURES), name="output")(flat_output)
 
-        target_layer = _convert_layer(source_layer)
-        x = target_layer(x)
-        layer_pairs.append((source_layer, target_layer))
-
-    model = tf.keras.Model(inputs=inputs, outputs=x, name="lstm_autoencoder_tflite_native")
-    return model, layer_pairs
+    return tf.keras.Model(inputs=inputs, outputs=outputs, name="lstm_autoencoder_tflite_native")
 
 
-def _transfer_weights(layer_pairs: Sequence[Tuple[tf.keras.layers.Layer, tf.keras.layers.Layer]]) -> Tuple[int, List[str]]:
+def _transfer_weights(
+    source_model: tf.keras.Model,
+    target_model: tf.keras.Model,
+) -> Tuple[int, List[str]]:
+    source_layers = _source_layer_map(source_model)
+    target_layers = _source_layer_map(target_model)
+
+    layer_pairs: List[Tuple[str, str]] = [
+        ("encoder_lstm1", "encoder_lstm1"),
+        ("bottleneck", "decoder_dense"),
+    ]
+
     transferred_count = 0
     skipped_messages: List[str] = []
 
-    for source_layer, target_layer in layer_pairs:
+    for source_name, target_name in layer_pairs:
+        source_layer = source_layers.get(source_name)
+        target_layer = target_layers.get(target_name)
+
+        if source_layer is None or target_layer is None:
+            skipped_messages.append(f"{source_name} -> {target_name}: layer missing")
+            continue
+
         source_weights = source_layer.get_weights()
         target_weights = target_layer.get_weights()
 
@@ -135,7 +131,7 @@ def _transfer_weights(layer_pairs: Sequence[Tuple[tf.keras.layers.Layer, tf.kera
             transferred_count += 1
         else:
             skipped_messages.append(
-                f"{source_layer.name} -> {target_layer.name}: "
+                f"{source_name} -> {target_name}: "
                 f"shape mismatch ({[w.shape for w in source_weights]} vs {[w.shape for w in target_weights]})"
             )
 
@@ -152,8 +148,8 @@ def main() -> int:
     print(f"Source input shape: {source_model.input_shape}")
     print(f"Source output shape: {source_model.output_shape}")
 
-    target_model, layer_pairs = _build_restructured_model(source_model)
-    transferred_count, skipped_messages = _transfer_weights(layer_pairs)
+    target_model = _build_restructured_model(source_model)
+    transferred_count, skipped_messages = _transfer_weights(source_model, target_model)
 
     OUTPUT_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     target_model.save(OUTPUT_MODEL_PATH, include_optimizer=False)

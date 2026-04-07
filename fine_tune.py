@@ -12,9 +12,9 @@ import tensorflow as tf
 
 MODEL_PATH = Path("data/ai_models/model_complex/lstm_autoencoder_tflite_native.h5")
 TRAINING_DIR = Path("data/ai_training_base")
-EPOCHS = 10
+EPOCHS = 30
 BATCH_SIZE = 32
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 5e-5
 
 
 def _build_training_candidates(base_dir: Path) -> List[Path]:
