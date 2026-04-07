@@ -53,9 +53,9 @@ constexpr uint32_t UART_TIMEOUT_MS = 5000;
 // Phase 8c guard: keep false in Phase 8a software prep.
 #define LIVE_IMU false
 
-constexpr float THRESH_NORMAL = 0.6091226281f;
-constexpr float THRESH_WARNING = 0.8377888951f;
-constexpr float THRESH_CRITICAL = 1.0664551621f;
+constexpr float THRESH_NORMAL   = 0.8277951731f;
+constexpr float THRESH_WARNING  = 0.9562104574f;
+constexpr float THRESH_CRITICAL = 1.0846257417f;
 
 constexpr uint8_t FALLBACK_LED_PIN = 2;
 // Input buffer footprint for [30,14] float32 is 30*14*4 = 1680 bytes.
