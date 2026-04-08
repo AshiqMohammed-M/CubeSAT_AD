@@ -15,8 +15,9 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <MPU6050.h>
-#include <TensorFlowLite_ESP32.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_sensor.h>
+#include <Chirale_TensorFlowLite.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -41,8 +42,8 @@
 
 // -------------------- Includes and defines --------------------
 constexpr uint32_t UART_BAUD_RATE = 115200;
-constexpr uint8_t I2C_SDA_PIN = 8;
-constexpr uint8_t I2C_SCL_PIN = 9;
+constexpr uint8_t I2C_SDA_PIN = 21;
+constexpr uint8_t I2C_SCL_PIN = 20;
 
 constexpr size_t WINDOW_SIZE = 30;
 constexpr size_t FEATURE_COUNT = 14;
@@ -79,7 +80,7 @@ static bool g_window_ready = false;
 
 static uint32_t g_sample_index = 0;
 
-MPU6050 g_imu;
+Adafruit_MPU6050 g_imu;
 bool g_imu_available = false;
 
 enum Severity : uint8_t {
@@ -417,28 +418,37 @@ bool read_live_imu(float *attitude_error_deg, float *gyro_magnitude, float *acce
     return false;
   }
 
-  int16_t ax = 0, ay = 0, az = 0;
-  int16_t gx = 0, gy = 0, gz = 0;
-  g_imu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-  if (ax == 0 && ay == 0 && az == 0 && gx == 0 && gy == 0 && gz == 0) {
+  // Adafruit MPU6050 returns pre-scaled SI units via sensor events
+  sensors_event_t accel_event, gyro_event, temp_event;
+  if (!g_imu.getEvent(&accel_event, &gyro_event, &temp_event)) {
     return false;
   }
 
-  const float ax_g = static_cast<float>(ax) / 16384.0f;
-  const float ay_g = static_cast<float>(ay) / 16384.0f;
-  const float az_g = static_cast<float>(az) / 16384.0f;
+  // accel in m/s^2, gyro in rad/s
+  const float ax_ms2 = accel_event.acceleration.x;
+  const float ay_ms2 = accel_event.acceleration.y;
+  const float az_ms2 = accel_event.acceleration.z;
 
-  const float gx_rad_s = (static_cast<float>(gx) / 131.0f) * (PI / 180.0f);
-  const float gy_rad_s = (static_cast<float>(gy) / 131.0f) * (PI / 180.0f);
-  const float gz_rad_s = (static_cast<float>(gz) / 131.0f) * (PI / 180.0f);
+  const float gx_rad_s = gyro_event.gyro.x;
+  const float gy_rad_s = gyro_event.gyro.y;
+  const float gz_rad_s = gyro_event.gyro.z;
 
-  const float roll_deg = atan2f(ay_g, az_g) * 57.2957795f;
+  if (ax_ms2 == 0.0f && ay_ms2 == 0.0f && az_ms2 == 0.0f &&
+      gx_rad_s == 0.0f && gy_rad_s == 0.0f && gz_rad_s == 0.0f) {
+    return false;
+  }
+
+  // Convert m/s^2 to g for tilt calculation
+  const float ax_g = ax_ms2 / 9.80665f;
+  const float ay_g = ay_ms2 / 9.80665f;
+  const float az_g = az_ms2 / 9.80665f;
+
+  const float roll_deg  = atan2f(ay_g, az_g) * 57.2957795f;
   const float pitch_deg = atan2f(-ax_g, sqrtf(ay_g * ay_g + az_g * az_g)) * 57.2957795f;
 
   *attitude_error_deg = sqrtf(roll_deg * roll_deg + pitch_deg * pitch_deg);
-  *gyro_magnitude = sqrtf(gx_rad_s * gx_rad_s + gy_rad_s * gy_rad_s + gz_rad_s * gz_rad_s);
-  *accel_magnitude = sqrtf(ax_g * ax_g + ay_g * ay_g + az_g * az_g) * 9.80665f;
+  *gyro_magnitude     = sqrtf(gx_rad_s * gx_rad_s + gy_rad_s * gy_rad_s + gz_rad_s * gz_rad_s);
+  *accel_magnitude    = sqrtf(ax_ms2 * ax_ms2 + ay_ms2 * ay_ms2 + az_ms2 * az_ms2);
 
   return true;
 }
@@ -712,16 +722,38 @@ bool setup_tflm() {
 // -------------------- Arduino lifecycle --------------------
 void setup() {
   Serial.begin(UART_BAUD_RATE);
-  delay(200);
+  delay(500);
 
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   pinMode(FALLBACK_LED_PIN, OUTPUT);
   digitalWrite(FALLBACK_LED_PIN, LOW);
+  delay(100);
 
-  g_imu.initialize();
-  g_imu_available = g_imu.testConnection();
+
+  // Manually wake the MPU6050 before begin()
+  // Wire.beginTransmission(0x68);
+  // Wire.write(0x75);  // WHO_AM_I register
+  // Wire.endTransmission(false);
+  // Wire.requestFrom(0x68, 1);
+  // if (Wire.available()) {
+  //   Serial.printf("[I2C] WHO_AM_I = 0x%02X (expect 0x68)\n", Wire.read());
+  // }
+
+// g_imu_available = g_imu.begin(0x68, &Wire);
+  // Wire.beginTransmission(0x68);
+  // uint8_t error = Wire.endTransmission();
+  // Serial.printf("[I2C] Direct probe at 0x68: %d (0=found)\n", error);
+
+  // g_imu_available = g_imu.begin(0x68, &Wire);
+  // g_imu.setI2CAddress(0x68);
+  g_imu_available = g_imu.begin(0x68, &Wire);
+
   if (!g_imu_available) {
     Serial.println("IMU NOT FOUND - CONTINUING");
+  } else {
+    g_imu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    g_imu.setGyroRange(MPU6050_RANGE_500_DEG);
+    g_imu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   }
 
   setup_tflm();
